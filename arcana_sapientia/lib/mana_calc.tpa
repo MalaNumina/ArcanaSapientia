@@ -1,0 +1,60 @@
+DEFINE_PATCH_FUNCTION ~CALCULATE_MANA~
+	INT_VAR
+		type = 0
+		charisma = 13
+		level = 1
+		hours = 1
+		reference = 0
+	RET
+		max_mana
+		mana_regen
+		mana_hours
+BEGIN
+	min_charisma = 13
+	factor = 6
+	PATCH_MATCH type
+	WITH
+		1 BEGIN //PLAIN SORCERER
+			base_mana = 100
+			PATCH_IF (reference > 0) THEN BEGIN TEXT_SPRINT mana_table ~W7S_MNRF.2DA~ END
+		END
+		2 BEGIN //DRAGON DISCIPLE
+			base_mana = 50
+			PATCH_IF (reference > 0) THEN BEGIN TEXT_SPRINT mana_table ~W7SDMNRF.2DA~ END
+		END
+		DEFAULT //GENERIC KIT
+			base_mana = 50
+			PATCH_IF (reference > 0) THEN BEGIN TEXT_SPRINT mana_table ~W7S@MNRF.2DA~ END
+	END	
+	max_mana = (base_mana + (charisma - min_charisma) * 100 / factor) * level
+	max_mana = ((max_mana REM 100) < 50) ? (max_mana / 100) : (max_mana / 100 + 1)
+	max_mana = (max_mana > 99) ? 99 : max_mana
+	mana_regen = 240000 / max_mana
+	mana_regen = ((mana_regen REM 100) < 50) ? (mana_regen / 100) : (mana_regen / 100 + 1)
+	mana_hours = max_mana * 100 / 8 * hours
+	mana_hours = ((mana_hours REM 100) < 50) ? (mana_hours / 100) : (mana_hours / 100 + 1)
+	PATCH_IF (reference > 0) THEN BEGIN
+		INNER_ACTION BEGIN
+<<<<<<<<...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_MANA_TABLE.2DA
+2DA V1.0
+****
+ CHR<=13 CHR=14 CHR=15 CHR=16 CHR=17 CHR=18 CHR=19 CHR=20 CHR=21 CHR=22 CHR=23 CHR=24 CHR=25
+>>>>>>>>
+			ACTION_IF (NOT FILE_EXISTS_IN_GAME ~%mana_table%~) THEN BEGIN
+				COPY ~...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_MANA_TABLE.2DA~ ~override/%mana_table%~
+			END
+			COPY_EXISTING ~%mana_table%~ ~override~
+				COUNT_2DA_ROWS 14 rows
+			BUT_ONLY
+			ACTION_IF (rows < level) THEN BEGIN
+				OUTER_FOR (i = rows + 1; i <= level; ++i) BEGIN
+					APPEND ~%mana_table%~ ~LVL%i% **** **** **** **** **** **** **** **** **** **** **** **** ****~
+				END
+			END
+			COPY_EXISTING ~%mana_table%~ ~override~
+				SET_2DA_ENTRY (level - 1) (charisma - 12) 14 ~%max_mana%pt-%mana_regen%s~
+				PRETTY_PRINT_2DA
+			BUT_ONLY
+		END
+	END
+END

@@ -1,0 +1,234 @@
+/////////////////////////////////////////////////////////////////////////////
+//PADS THE GIVEN NUMBER BY THE AMOUNT OF ZEROS DEFINED IN THE PAD PARAMETER//
+/////////////////////////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~PATCH_PADDING~
+	INT_VAR
+		num = 0
+		pad = 1
+	RET
+		pad_num
+BEGIN
+	TEXT_SPRINT pad_num ~~
+	FOR (i = pad; i > 0; --i) BEGIN
+		max = 10 ** i
+		PATCH_IF (num < max) THEN BEGIN TEXT_SPRINT pad_num ~%pad_num%0~ END
+	END
+	TEXT_SPRINT pad_num ~%pad_num%%num%~
+END
+
+DEFINE_ACTION_FUNCTION ~ACTION_PADDING~
+	INT_VAR
+		num = 0
+		pad = 1
+	RET
+		pad_num
+BEGIN
+	OUTER_TEXT_SPRINT pad_num ~~
+	OUTER_FOR (i = pad; i > 0; --i) BEGIN
+		OUTER_SET max = 10 ** i
+		ACTION_IF (num < max) THEN BEGIN OUTER_TEXT_SPRINT pad_num ~%pad_num%0~ END
+	END
+	OUTER_TEXT_SPRINT pad_num ~%pad_num%%num%~
+END
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//BINARY CONVERSION AND BIT MANIPULATION FOR VALUES UP TO 32 BITS. THE SIZE PARAMETER DETERMINS THE NUMBER OF BYTE//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~PATCH_BINARY~
+	INT_VAR
+		num = 0
+		size = 1
+		bit00 = ~-1~
+		bit01 = ~-1~
+		bit02 = ~-1~
+		bit03 = ~-1~
+		bit04 = ~-1~
+		bit05 = ~-1~
+		bit06 = ~-1~
+		bit07 = ~-1~
+		bit10 = ~-1~
+		bit11 = ~-1~
+		bit12 = ~-1~
+		bit13 = ~-1~
+		bit14 = ~-1~
+		bit15 = ~-1~
+		bit16 = ~-1~
+		bit17 = ~-1~
+		bit20 = ~-1~
+		bit21 = ~-1~
+		bit22 = ~-1~
+		bit23 = ~-1~
+		bit24 = ~-1~
+		bit25 = ~-1~
+		bit26 = ~-1~
+		bit27 = ~-1~
+		bit30 = ~-1~
+		bit31 = ~-1~
+		bit32 = ~-1~
+		bit33 = ~-1~
+		bit34 = ~-1~
+		bit35 = ~-1~
+		bit36 = ~-1~
+		bit37 = ~-1~
+	RET
+		num
+		bin
+	RET_ARRAY
+		bits
+BEGIN
+	DEFINE_ARRAY in_bits BEGIN
+	~%bit00%~ ~%bit01%~ ~%bit02%~ ~%bit03%~ ~%bit04%~ ~%bit05%~ ~%bit06%~ ~%bit07%~
+	~%bit10%~ ~%bit11%~ ~%bit12%~ ~%bit13%~ ~%bit14%~ ~%bit15%~ ~%bit16%~ ~%bit17%~
+	~%bit20%~ ~%bit21%~ ~%bit22%~ ~%bit23%~ ~%bit24%~ ~%bit25%~ ~%bit26%~ ~%bit27%~ 
+	~%bit30%~ ~%bit31%~ ~%bit32%~ ~%bit33%~ ~%bit34%~ ~%bit34%~ ~%bit36%~ ~%bit37%~
+	END
+	size *= 8
+	TEXT_SPRINT bin ~0b~
+	FOR (i = 0; i < size; ++i) BEGIN
+		TEXT_SPRINT b $in_bits(~%i%~)
+		PATCH_IF (b = 0) OR (b = 1) THEN BEGIN 
+			res = b 
+		END ELSE BEGIN
+			TEXT_SPRINT ctrl ~0b~
+			FOR (j = 0; j < size; ++j) BEGIN
+				b = (i = j) ? 1 : 0
+				TEXT_SPRINT ctrl ~%ctrl%%b%~
+			END
+			res = ((num BAND ~%ctrl%~) != 0) ? 1 : 0
+		END
+		TEXT_SPRINT bin ~%bin%%res%~
+		TEXT_SPRINT $bits(~%i%~) ~%res%~
+	END
+	num = 0 BOR ~%bin%~
+END
+
+DEFINE_ACTION_FUNCTION ~ACTION_BINARY~
+	INT_VAR
+		num = 0
+		size = 1
+		bit00 = ~-1~
+		bit01 = ~-1~
+		bit02 = ~-1~
+		bit03 = ~-1~
+		bit04 = ~-1~
+		bit05 = ~-1~
+		bit06 = ~-1~
+		bit07 = ~-1~
+		bit10 = ~-1~
+		bit11 = ~-1~
+		bit12 = ~-1~
+		bit13 = ~-1~
+		bit14 = ~-1~
+		bit15 = ~-1~
+		bit16 = ~-1~
+		bit17 = ~-1~
+		bit20 = ~-1~
+		bit21 = ~-1~
+		bit22 = ~-1~
+		bit23 = ~-1~
+		bit24 = ~-1~
+		bit25 = ~-1~
+		bit26 = ~-1~
+		bit27 = ~-1~
+		bit30 = ~-1~
+		bit31 = ~-1~
+		bit32 = ~-1~
+		bit33 = ~-1~
+		bit34 = ~-1~
+		bit35 = ~-1~
+		bit36 = ~-1~
+		bit37 = ~-1~
+	RET
+		num
+		bin
+	RET_ARRAY
+		bits
+BEGIN
+	ACTION_DEFINE_ARRAY in_bits BEGIN
+	~%bit00%~ ~%bit01%~ ~%bit02%~ ~%bit03%~ ~%bit04%~ ~%bit05%~ ~%bit06%~ ~%bit07%~
+	~%bit10%~ ~%bit11%~ ~%bit12%~ ~%bit13%~ ~%bit14%~ ~%bit15%~ ~%bit16%~ ~%bit17%~
+	~%bit20%~ ~%bit21%~ ~%bit22%~ ~%bit23%~ ~%bit24%~ ~%bit25%~ ~%bit26%~ ~%bit27%~ 
+	~%bit30%~ ~%bit31%~ ~%bit32%~ ~%bit33%~ ~%bit34%~ ~%bit34%~ ~%bit36%~ ~%bit37%~
+	END
+	OUTER_SET size *= 8
+	OUTER_TEXT_SPRINT bin ~0b~
+	OUTER_FOR (i = 0; i < size; ++i) BEGIN
+		OUTER_TEXT_SPRINT b $in_bits(~%i%~)
+		ACTION_IF (b = 0) OR (b = 1) THEN BEGIN 
+			OUTER_SET res = b 
+		END ELSE BEGIN
+			OUTER_TEXT_SPRINT ctrl ~0b~
+			OUTER_FOR (j = 0; j < size; ++j) BEGIN
+				OUTER_SET b = (i = j) ? 1 : 0
+				OUTER_TEXT_SPRINT ctrl ~%ctrl%%b%~
+			END
+			OUTER_SET res = ((num BAND ~%ctrl%~) != 0) ? 1 : 0
+		END
+		OUTER_TEXT_SPRINT bin ~%bin%%res%~
+		OUTER_TEXT_SPRINT $bits(~%i%~) ~%res%~
+	END
+	OUTER_SET num = 0 BOR ~%bin%~
+END
+
+DEFINE_ACTION_FUNCTION ~ACTION_STRING_REPLACE~
+	INT_VAR
+		amount = 0
+	STR_VAR
+		string = ~~
+		find = ~*~
+		replace = ~~
+	RET
+		string
+BEGIN
+	OUTER_SET len = (STRING_LENGTH ~%find%~)
+	OUTER_INNER_PATCH ~%find%~ BEGIN
+		FOR (i = 0; i < len; ++i) BEGIN
+			READ_BYTE i ~b~
+			TEXT_SPRINT $find_array(~%i%~) ~%b%~
+		END
+	END
+	ACTION_IF (len > 0) THEN BEGIN
+		OUTER_SET max = (STRING_LENGTH ~%string%~) - len + 1
+		OUTER_INNER_PATCH_SAVE strrep ~%string%~ BEGIN
+			FOR (i = 0; i < max; ++i) BEGIN
+				match = 0
+				FOR (j = i; j < i + len; ++j) BEGIN
+					h = j - i
+					READ_BYTE j ~b~
+					PATCH_IF $find_array(~%h%~) = ~%b%~ THEN BEGIN
+						match += 1
+					END ELSE BEGIN
+						j = i + len
+					END
+				END
+				PATCH_IF (match = len) THEN BEGIN
+					PATCH_PRINT ~FOUND!~
+				END
+			END
+		END
+	END
+END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

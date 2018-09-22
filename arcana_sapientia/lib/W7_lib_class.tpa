@@ -1,0 +1,253 @@
+/////////////////////
+// LIST_CLASS_KITS //
+//////////////////////////////////////////////////////////////////////////////////
+//																				//
+//	Creates an array containing all the kits associated with the given class.	//
+//																				//
+//////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~LIST_CLASS_KITS~
+	INT_VAR
+		class_num = 0
+	STR_VAR
+		class_name = ~*~
+	RET_ARRAY
+		kit_list
+BEGIN
+	ACTION_IF (class_num < 1) OR (class_num > 21) THEN BEGIN
+		COPY_EXISTING ~CLASS.IDS~ ~override~
+			COUNT_2DA_COLS cols
+			READ_2DA_ENTRIES_NOW rows cols
+			FOR (row = 1; row < rows; row += 1) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 class
+				PATCH_IF ~%class%~ STRING_EQUAL_CASE ~%class_name%~ BEGIN
+					READ_2DA_ENTRY_FORMER rows row 0 num
+					class_num = num
+					row = rows
+				END
+			END
+		BUT_ONLY
+	END
+	ACTION_IF (class_num < 1) OR (class_num > 21) THEN BEGIN
+		WARN ~Class %class_name% not found!~
+		OUTER_TEXT_SPRINT $kit_list(~*~) ~*~
+	END ELSE BEGIN
+		COPY_EXISTING ~KITLIST.2DA~ ~override~
+			COUNT_2DA_COLS cols
+			READ_2DA_ENTRIES_NOW rows cols
+			ki = 0
+			FOR (row = 0; row < rows; row += 1) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 8 num
+				PATCH_IF IS_AN_INT num BEGIN
+					PATCH_IF (num = class_num) BEGIN
+						READ_2DA_ENTRY_FORMER rows row 1 kit
+						TEXT_SPRINT $kit_list(~%kit%~) ~%ki%~
+						ki += 1
+					END
+				END
+			END
+			PATCH_IF (ki = 0) THEN BEGIN
+				TEXT_SPRINT $kit_list(~*~) ~*~
+			END
+		BUT_ONLY
+	END
+END
+
+////////////////////
+// GET_CLAB_TABLE //
+//////////////////////////////////////////////////////////////////////////////////
+//																				//
+//	Returns the name of the CLAB table associated with the given class or kit.	//
+//																				//
+//////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~GET_CLAB_TABLE~
+	STR_VAR
+		kit_name = ~*~
+	RET
+		clab_table
+BEGIN
+	OUTER_TEXT_SPRINT clab_table ~*~
+	ACTION_MATCH ~%kit_name%~
+	WITH
+		~MAGE~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABMA01~ END
+		~FIGHTER~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABFI01~ END
+		~CLERIC~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABPR01~ END
+		~THIEF~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABTH01~ END
+		~BARD~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABBA01~ END
+		~PALADIN~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABPA01~ END
+		~DRUID~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABDR01~ END
+		~RANGER~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABRN01~ END
+		~SORCERER~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABMA01~ END
+		~MONK~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABMO01~ END
+		~SHAMAN~ BEGIN OUTER_TEXT_SPRINT clab_table ~CLABSH01~ END
+	DEFAULT
+		COPY_EXISTING ~KITLIST.2DA~ ~override~
+			COUNT_2DA_COLS cols
+			READ_2DA_ENTRIES_NOW rows cols
+			FOR (row = 0; row < rows; row += 1) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 kit
+				PATCH_IF ~%kit%~ STRING_EQUAL_CASE ~%kit_name%~ BEGIN
+					READ_2DA_ENTRY_FORMER rows row 5 clab_table
+				END
+			END
+		BUT_ONLY
+	END
+	ACTION_IF ~%clab_table%~ STRING_EQUAL_CASE ~*~ THEN BEGIN
+		WARN ~%kit_name% CLAB table not found!~
+	END
+END
+
+/////////////////
+// HLA_MIN_LVL //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																//
+//	If the min_lvl parameter is equal to 0, returns the level at which the given class can select the first HLA.				//
+//	If the min_lvl parameter is not equal to 0, sets the level at which the given class can select the first HLA to min_lvl.	//
+//																																//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~HLA_MIN_LVL~
+	STR_VAR
+		class_name = ~*~
+		min_lvl = 0
+	RET
+		min_lvl
+BEGIN
+	COPY_EXISTING ~LUNUMAB.2DA~ ~override~
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		found = 0
+		FOR (row = 0; row < rows; row += 1) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 0 class
+			READ_2DA_ENTRY_FORMER rows row 1 lvl
+			PATCH_IF ~%class%~ STRING_EQUAL_CASE ~%class_name%~ BEGIN
+				PATCH_IF (min_lvl = 0) THEN BEGIN 
+					TEXT_SPRINT min_lvl ~%lvl%~
+				END ELSE BEGIN
+					SET_2DA_ENTRY row 1 cols ~%min_lvl%~
+				END
+				found = 1
+			END
+		END
+	BUT_ONLY
+	ACTION_IF (found = 0) THEN BEGIN
+		WARN ~Class %class_name% not found!~
+	END
+END
+
+///////////////////
+// GET_HLA_TABLE //
+//////////////////////////////////////////////////////////////////////////
+//																		//
+//	Returns the HLA table associated with the given trueclass or kit.	//
+//																		//
+//////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~GET_HLA_TABLE~
+	STR_VAR
+		kit_name = ~*~
+	RET
+		hla_table
+BEGIN
+	COPY_EXISTING ~LUABBR.2DA~ ~override~
+		TEXT_SPRINT hla_table ~*~
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		FOR (row = 0; row < rows; row += 1) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 0 kit
+			PATCH_IF ~%kit%~ STRING_EQUAL_CASE ~%kit_name%~ BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 lu
+				TEXT_SPRINT hla_table ~LU%lu%.2DA~
+			END
+		END
+	BUT_ONLY
+	ACTION_IF ~%hla_table%~ STRING_EQUAL_CASE ~*~ THEN BEGIN
+		WARN ~%kit_name% HLA table not found!~
+	END
+END
+
+///////////////////
+// LIST_KIT_HLAS //
+//////////////////////////////////////////////////////////////////////////////////////////////
+//																							//
+//	Creates an array containing all the HLAs associated with the given trueclass or kit.	//
+//																							//
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~LIST_KIT_HLAS~
+	STR_VAR
+		kit_name = ~*~
+	RET
+		ap_len
+		ga_len
+	RET_ARRAY
+		hla_list
+BEGIN
+	LAF GET_HLA_TABLE STR_VAR kit_name = EVAL ~%kit_name%~ RET hla_table END
+	OUTER_SET ap_len = 0
+	OUTER_SET ga_len = 0
+	ACTION_IF !(~%hla_table%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+		COPY_EXISTING ~%hla_table%~ ~override~
+			COUNT_2DA_COLS cols
+			READ_2DA_ENTRIES_NOW rows cols
+			FOR (row = 0; row < rows; row += 1) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 ability
+				PATCH_IF !(~%ability%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+					SNPRINT (2) type ~%ability%~
+					SNPRINT (0 - STRING_LENGTH ~%ability%~ + 3) ability ~%ability%~
+					i = (~%type%~ STRING_EQUAL_CASE ~AP~) ? ap_len : ga_len
+					TEXT_SPRINT $hla_list(~%type%~ ~%i%~) ~%ability%~
+					PATCH_IF ~%type%~ STRING_EQUAL_CASE ~AP~ BEGIN ap_len += 1 END
+					PATCH_IF ~%type%~ STRING_EQUAL_CASE ~GA~ BEGIN ga_len += 1 END
+				END
+			END
+		BUT_ONLY
+	END ELSE BEGIN
+		OUTER_TEXT_SPRINT $hla_list(~*~) ~*~
+	END
+END
+
+/////////////////////
+// LIST_CLASS_HLAS //
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//																									//
+//	Creates an array containing all the distinct HLAs associated with the given class and its kits.	//
+//																									//
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~LIST_CLASS_HLAS~
+	STR_VAR
+		class_name = ~*~
+	RET
+		ap_len
+		ga_len
+	RET_ARRAY
+		hla_list
+BEGIN
+	LAF LIST_CLASS_KITS STR_VAR class_name = EVAL ~%class_name%~ RET_ARRAY kit_list END
+	LAF LIST_KIT_HLAS STR_VAR kit_name = EVAL ~%class_name%~ RET ap_len ga_len RET_ARRAY hla_list END
+	ACTION_IF !(VARIABLE_IS_SET $kit_list(~*~)) THEN BEGIN
+		ACTION_PHP_EACH kit_list AS kit => id BEGIN
+			LAF LIST_KIT_HLAS STR_VAR kit_name = EVAL ~%kit%~ RET_ARRAY kit_hlas = hla_list END
+			ACTION_IF !(VARIABLE_IS_SET $kit_hlas(~*~)) THEN BEGIN
+				ACTION_PHP_EACH kit_hlas AS kk => kv BEGIN
+					OUTER_SET new = 1
+					ACTION_PHP_EACH hla_list AS ck => cv BEGIN
+						ACTION_IF ~%kv%~ STRING_EQUAL_CASE ~%cv%~ THEN BEGIN
+							OUTER_SET new = 0
+						END
+					END
+					ACTION_IF (new = 1) THEN BEGIN
+						OUTER_SET i = (~%kk%~ STRING_EQUAL_CASE ~AP~) ? ap_len : ga_len
+						OUTER_TEXT_SPRINT $hla_list(~%kk%~ ~%i%~) ~%kv%~
+						ACTION_IF ~%kk%~ STRING_EQUAL_CASE ~AP~ BEGIN OUTER_SET ap_len += 1 END
+						ACTION_IF ~%kk%~ STRING_EQUAL_CASE ~GA~ BEGIN OUTER_SET ga_len += 1 END
+					END
+				END
+			END
+		END
+	END
+END
+
+

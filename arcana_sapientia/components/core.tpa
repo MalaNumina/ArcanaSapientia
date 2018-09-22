@@ -1,0 +1,55 @@
+//////////////////////////////
+//CREATE MAGE/SORCERER CLABS//
+//////////////////////////////
+
+<<<<<<<<...inlined/W7/arcana_sapientia/core/DUMMYCLAB.2DA
+2DA V1.0
+****
+ 
+ABILITY1
+>>>>>>>>
+
+OUTER_FOR (i = 1; i <= 10; ++i) BEGIN
+	OUTER_TEXT_SPRINT ii ~%i%~
+	ACTION_IF (i < 10) THEN BEGIN
+		OUTER_TEXT_SPRINT ii ~0%i%~
+	END
+	ACTION_IF (NOT FILE_EXISTS_IN_GAME ~CLABMA%ii%.2DA~) THEN BEGIN
+		COPY ~...inlined/W7/arcana_sapientia/core/DUMMYCLAB.2DA~ ~override/CLABMA%ii%.2DA~
+		OUTER_FOR (j = 1; j <= 50; ++j) BEGIN
+			APPEND_COL ~CLABMA%ii%.2DA~ ~%j% ****~ 2
+		END
+	END
+	COPY_EXISTING ~CLABMA%ii%.2DA~ ~override~
+		COUNT_2DA_COLS cols
+		COUNT_2DA_ROWS cols rows
+	BUT_ONLY
+	ACTION_IF (cols < 51) THEN BEGIN
+		OUTER_FOR (j = cols; j <= 50; ++j) BEGIN
+			OUTER_TEXT_SPRINT col ~%j%~
+			OUTER_FOR (h = 0; h < rows; ++h) BEGIN
+				OUTER_TEXT_SPRINT col ~%col% ****~
+			END
+			APPEND_COL ~CLABMA%ii%.2DA~ ~%col%~ 2
+		END
+	END
+	COPY_EXISTING ~CLABMA%ii%.2DA~ ~override~
+		PRETTY_PRINT_2DA
+	BUT_ONLY
+END
+
+	
+
+COPY_EXISTING ~KITLIST.2DA~ ~override~
+	COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		FOR (row = 1; row < rows; ++row) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 1 ~kit~
+			PATCH_IF ~%kit%~ STRING_EQUAL_CASE ~WILDMAGE~ BEGIN
+				READ_2DA_ENTRY_FORMER rows row 5 ~clab~
+				PATCH_IF ~%clab%~ STRING_EQUAL_CASE ~CLABMA01~ BEGIN
+					SET_2DA_ENTRY row 5 cols ~CLABMA10~
+				END
+			END
+		END
+BUT_ONLY

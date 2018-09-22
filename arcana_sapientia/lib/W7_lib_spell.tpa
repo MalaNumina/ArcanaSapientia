@@ -1,0 +1,455 @@
+////////////////////////
+// REQUIRED LIBRARIES //
+//////////////////////////////////////////////////////////
+//														//
+// For this library to work you need also to include:	//
+//														//
+//	W7_lib_utility										//
+//	W7_lib_class										//
+//														//
+//////////////////////////////////////////////////////////
+
+//////////////////
+// CREATE_SPELL //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																															//
+//	Creates a new spell named as spell parameter. If a source parameter is provided, the spell referenced in that parameter	//
+//	is taken as a starting point (only the main header is cloned, while abilities and effects are ignored), but every 		//
+//	provided parameter will replace the corrispondig value in the source spell.												//
+//	I found a basic version of this function in a library created by Ardanis, but I needed the cloning feature, so I wrote	//
+//	this extended version.																									//
+//																															//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~CREATE_SPELL~
+	INT_VAR
+		name = ~-1~
+		name_i = ~-1~
+		flags = ~-1~
+		type = ~-1~
+		ex_flags = ~-1~
+		animation = ~-1~
+		school = ~-1~
+		sectype = ~-1~
+		level = ~-1~
+		description = ~-1~
+		description_i = ~-1~
+	STR_VAR
+		source = ~*~
+		spell = ~W7DUMMYSPL~
+		sound = ~*~
+		icon = ~*~
+BEGIN
+<<<<<<<<...inlined/W7/lib/DUMMY_SPELL.SPL
+>>>>>>>>
+	ACTION_IF !(~%source%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+		COPY_EXISTING ~%source%.SPL~ ~override~
+			PATCH_IF (name = ~-1~) THEN BEGIN READ_LONG NAME1 name END
+			PATCH_IF (name_i = ~-1~) THEN BEGIN READ_LONG NAME2 name_i END
+			PATCH_IF (~%sound%~ STRING_EQUAL_CASE ~*~) THEN BEGIN READ_ASCII 0x10 sound (8) END
+			PATCH_IF (flags = ~-1~) THEN BEGIN READ_LONG 0x18 flags END
+			PATCH_IF (type = ~-1~) THEN BEGIN READ_SHORT 0x1c type END
+			PATCH_IF (ex_flags = ~-1~) THEN BEGIN READ_LONG 0x1e ex_flags END
+			PATCH_IF (animation = ~-1~) THEN BEGIN READ_SHORT 0x22 animation END
+			PATCH_IF (school = ~-1~) THEN BEGIN READ_SHORT 0x25 school END
+			PATCH_IF (sectype = ~-1~) THEN BEGIN READ_SHORT 0x27 sectype END
+			PATCH_IF (level = ~-1~) THEN BEGIN READ_LONG 0x34 level END
+			PATCH_IF (~%icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN READ_ASCII 0x3a icon (8) END
+			PATCH_IF (description = ~-1~) THEN BEGIN READ_LONG UNIDENTIFIED_DESC description END
+			PATCH_IF (description_i = ~-1~) THEN BEGIN READ_LONG IDENTIFIED_DESC description_i END
+		BUT_ONLY
+	END ELSE BEGIN
+		ACTION_IF (~%sound%~ STRING_EQUAL_CASE ~*~) THEN BEGIN OUTER_TEXT_SPRINT sound ~~ END
+		ACTION_IF (flags = ~-1~) THEN BEGIN OUTER_SET flags = 0 END
+		ACTION_IF (type = ~-1~) THEN BEGIN OUTER_SET type = 4 END
+		ACTION_IF (ex_flags = ~-1~) THEN BEGIN OUTER_SET ex_flags = 0 END
+		ACTION_IF (animation = ~-1~) THEN BEGIN OUTER_SET animation = 0 END
+		ACTION_IF (school = ~-1~) THEN BEGIN OUTER_SET school = 0 END
+		ACTION_IF (sectype = ~-1~) THEN BEGIN OUTER_SET sectype = 0 END
+		ACTION_IF (level = ~-1~) THEN BEGIN OUTER_SET level = 1 END
+		ACTION_IF (~%icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN OUTER_TEXT_SPRINT icon ~~ END
+	END
+	COPY ~...inlined/W7/lib/DUMMY_SPELL.SPL~ ~override/%spell%.SPL~
+		INSERT_BYTES 0 0x72
+		WRITE_ASCII 0 ~SPL V1  ~ (8)
+		WRITE_LONG NAME1 name
+		WRITE_LONG NAME2 name_i
+		WRITE_ASCIIE 0x10 ~%sound%~ (8)
+		WRITE_LONG 0x18 flags
+		WRITE_SHORT 0x1c type
+		WRITE_LONG 0x1e ex_flags
+		WRITE_SHORT 0x22 animation
+		WRITE_SHORT 0x25 school
+		WRITE_SHORT 0x27 sectype
+		WRITE_LONG 0x34 level
+		WRITE_ASCIIE 0x3a ~%icon%~ (8)
+		WRITE_LONG UNIDENTIFIED_DESC description
+		WRITE_LONG IDENTIFIED_DESC description_i
+		WRITE_LONG 0x64 0x72
+		WRITE_LONG 0x6a 0x72
+END
+
+//////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~STORE_SPELL_HEADER~
+	INT_VAR
+		header_index = 0
+		keep_effects = 0
+	RET
+		header
+BEGIN
+	LPF ~FJ_SPL_ITM_REINDEX~ END
+	READ_SHORT 0x68 hc //abilities count
+	header_index = (header_index < 0) ? 0 : header_index
+	header_index = (header_index > hc - 1) ? (hc - 1) : header_index
+	PATCH_IF (header_index < 0) THEN BEGIN
+		PATCH_WARN ~%SOURCE_FILE% contains no abilities! Skipping STORE_SPELL_HEADER.~
+	END ELSE BEGIN
+		hs=0x28
+		READ_LONG 0x64 ho //abilities offset
+		READ_ASCII ho+(header_index)*hs header (hs)
+		PATCH_IF keep_effects THEN BEGIN
+			READ_SHORT ho+(header_index)*hs+0x1e ec //effects count
+			PATCH_IF ec THEN BEGIN
+				READ_LONG 0x6a eo //effects offset
+				READ_SHORT ho+(header_index)*hs+0x20 ei //first effect index
+				READ_ASCII eo+ei*0x30 effects (ec*0x30)
+				TEXT_SPRINT header ~%header%%effects%~
+			END
+		END ELSE BEGIN
+			INNER_PATCH_SAVE header ~%header%~ BEGIN
+				WRITE_SHORT 0x1e 0
+				WRITE_SHORT 0x20 0
+			END
+		END
+	END
+END
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~ADD_SPELL_HEADER~
+	INT_VAR
+		type = 1
+		location = 4
+		target = 1
+		target_count = 0
+		range = 0
+		required_level = 1
+		speed = 0
+		projectile = 1
+		insert_point = ~-1~
+	STR_VAR
+		header = ~*~
+		icon = ~*~
+	RET
+		insert_point
+BEGIN
+	LPF ~FJ_SPL_ITM_REINDEX~ END
+	hs=0x28
+	READ_LONG 0x64 ho //abilities offset
+	READ_SHORT 0x68 hc //abilities count
+	READ_LONG 0x6a eo //effects offset
+	insert_point = (insert_point>hc || insert_point<0) ? hc : insert_point
+	
+	INSERT_BYTES ho+insert_point*hs hs
+	hc+=1
+    eo+=hs
+	PATCH_IF STRING_LENGTH ~%header%~ >= hs THEN BEGIN
+		PATCH_IF STRING_LENGTH ~%header%~ > hs THEN BEGIN
+			SNPRINT (0 - STRING_LENGTH ~%header%~ + hs) effects ~%header%~
+			SNPRINT hs header ~%header%~
+		END
+		WRITE_ASCIIE ho+insert_point*hs ~%header%~ (hs)
+	END
+	WRITE_SHORT 0x68 hc
+	WRITE_LONG 0x6a eo
+END
+
+///////////////////////
+// GET_HIDDEN_SPELLS //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//																								//
+//	Creates an array containing every spell listed in HIDESPL.2DA linked to its hide status.	//
+//																								//
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~GET_HIDDEN_SPELLS~
+	STR_VAR
+		type = ~SPWI~
+	RET
+		hidden_spells_len
+	RET_ARRAY
+		hidden_spells
+BEGIN
+	COPY_EXISTING ~HIDESPL.2DA~ ~override~
+		hidden_spells_len = 0
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		FOR (row = 0; row < rows; ++row) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 0 ~spl~
+			SNPRINT (4) spl_prfx ~%spl%~
+			PATCH_IF ~%spl_prfx%~ STRING_EQUAL_CASE ~%type%~ THEN BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 ~hid~
+				TEXT_SPRINT $hidden_spells(~%spl%~) ~%hid%~
+				hidden_spells_len += 1
+			END
+		END
+	BUT_ONLY
+END
+
+/////////////////
+// LIST_SPELLS //
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//																									//
+//	List every spell learnable by the given class, creating two array: plain_spells and hla_spells.	//
+//	For plain spells the first key is the spell level												//
+//																									//
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~LIST_SPELLS~
+	STR_VAR
+		class_name = ~~
+	RET
+		plain_spells_len
+		hla_spells_len
+	RET_ARRAY
+		plain_spells
+		hla_spells
+BEGIN
+	LAF LIST_CLASS_HLAS STR_VAR class_name = EVAL ~%class_name%~ RET ga_len RET_ARRAY hla_list END
+	ACTION_MATCH ~%class_name%~
+	WITH
+		~MAGE~ ~SORCERER~ ~BARD~ BEGIN OUTER_TEXT_SPRINT prfx ~SPWI~ END
+		~CLERIC~ ~PALADIN~ BEGIN OUTER_TEXT_SPRINT prfx ~SPPR~ OUTER_SET exc = 30 END
+		~DRUID~ ~RANGER~ ~SHAMAN~ BEGIN OUTER_TEXT_SPRINT prfx ~SPPR~ OUTER_SET exc = 31 END
+	DEFAULT
+		OUTER_TEXT_SPRINT prfx ~SPWI~
+	END		
+	LAF GET_HIDDEN_SPELLS STR_VAR type = EVAL ~%prfx%~ RET hidden_spells_len RET_ARRAY hidden_spells END
+	OUTER_SET plain_spells_len = 0
+	OUTER_SET hla_spells_len = 0
+	OUTER_SET cur_len = 0
+	OUTER_SET last_level = 0
+	COPY_EXISTING_REGEXP GLOB ~%prfx%[1-9]\(\([0-4][1-9]\)\|10\|20\|30\|40\|50\)\.spl~ ~override~
+		SNPRINT (7) spl ~%SOURCE_FILE%~
+		PATCH_IF !(VARIABLE_IS_SET $hidden_spells(~%spl%~)) OR ($hidden_spells(~%spl%~) = 0) THEN BEGIN
+			PATCH_IF !(~%prfx%~ STRING_EQUAL_CASE ~SPWI~) THEN BEGIN
+				READ_LONG 0x1e excflag
+				LPF PATCH_SPELL_FLAGS INT_VAR flag = excflag RET_ARRAY flags END								
+			END
+			PATCH_IF (~%prfx%~ STRING_EQUAL_CASE ~SPWI~) OR ($flags(~%exc%~) = 0) BEGIN
+				READ_LONG 0x34 level
+				cur_len = (level = last_level) ? cur_len : 0
+				last_level = level
+				TEXT_SPRINT $plain_spells(~%level%~ ~%cur_len%~) ~%spl%~
+				cur_len += 1
+				plain_spells_len += 1
+			END
+		END ELSE BEGIN
+			FOR (i = 0; i < ga_len; ++i) BEGIN
+				TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
+				PATCH_IF ~%hla%~ STRING_EQUAL_CASE ~%spl%~ THEN BEGIN
+					TEXT_SPRINT $hla_spells(~%hla%~) ~%hla_spells_len%~
+					hla_spells_len += 1
+				END
+			END
+		END
+	BUT_ONLY
+END
+
+//////////////////////////////
+// ACTION/PATCH_SPELL_FLAGS //
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//																								//
+//	Reads, creates or edits individual spell flags and returns the updated combined value and	//
+//	an array containing every individual updated value											//
+//																								//
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~ACTION_SPELL_FLAGS~
+	INT_VAR
+		flag = 0
+						//////////////////////////////////////////////////////////////////////////////////
+		flag0 = ~-1~ 	//	0	unknown						berserker				chaotic				//
+		flag1 = ~-1~ 	//	1	unknown						wizard slayer			evil				//
+		flag2 = ~-1~ 	//	2	unknown						kensai					good				//
+		flag3 = ~-1~ 	//	3	unknown						cavalier				...neutral			//
+		flag4 = ~-1~ 	//	4	unknown						inquisitor				lawful				//
+		flag5 = ~-1~ 	//	5	unknown						undead unter			neutral...			//
+		flag6 = ~-1~ 	//	6	unknown						abjurer					unused				//
+		flag7 = ~-1~ 	//	7	unknown						conjurer				unused				//
+		flag8 = ~-1~ 	//	8	unknown						diviner					unused				//
+		flag9 = ~-1~ 	//	9	break sanctuary				enchanter				unused				//
+		flag10 = ~-1~	//	10	hostile						illusionist				unused				//
+		flag11 = ~-1~ 	//	11	no los required				invoker					unused				//
+		flag12 = ~-1~ 	//	12	allow spotting				necromancer				unused				//
+		flag13 = ~-1~ 	//	13	outdoors only				transmuter				unused				//
+		flag14 = ~-1~ 	//	14	ignore dead/wild magic		generalist				unused				//
+		flag15 = ~-1~ 	//	15	ignore wild surge			archer					unused				//
+		flag16 = ~-1~ 	//	16	non combat ability			stalker					unused				//
+		flag17 = ~-1~ 	//	17	unknown						beastmaster				unused				//
+		flag18 = ~-1~ 	//	18	unknown						assassin				unused				//
+		flag19 = ~-1~ 	//	19	unknown						bounty unter			unused				//
+		flag20 = ~-1~ 	//	29	unknown						swashbuckler			unused				//
+		flag21 = ~-1~ 	//	21	unknown						blade					unused				//
+		flag22 = ~-1~ 	//	22	unknown						jester					unused				//
+		flag23 = ~-1~ 	//	23	unknown						skald					unused				//
+		flag24 = ~-1~ 	//	24	can target ivisible			cleric of talos			unused				//
+		flag25 = ~-1~ 	//	25	castable when silenced		cleric of helm			unused				//
+		flag26 = ~-1~ 	//	26	unknown						cleric of lathander		unused				//
+		flag27 = ~-1~ 	//	27	unknown						totemic druid			unused				//
+		flag28 = ~-1~ 	//	28	unknown						shapeshifter			unused				//
+		flag29 = ~-1~ 	//	28	unknown						avenger					unused				//
+		flag30 = ~-1~ 	//	30	unknown						barbarian				cleric/paladin		//
+		flag31 = ~-1~ 	//	31	unknown						wild mage				druid/ranger/shaman	//
+						//////////////////////////////////////////////////////////////////////////////////
+	RET
+		flag
+	RET_ARRAY
+		flags		
+BEGIN
+	LAF ACTION_BINARY
+	INT_VAR
+		num = flag
+		size = 4
+		bit00 = flag31
+		bit01 = flag30
+		bit02 = flag29
+		bit03 = flag28
+		bit04 = flag27
+		bit05 = flag26
+		bit06 = flag25
+		bit07 = flag24
+		bit10 = flag23
+		bit11 = flag22
+		bit12 = flag21
+		bit13 = flag20
+		bit14 = flag19
+		bit15 = flag18
+		bit16 = flag17
+		bit17 =	flag16
+		bit20 = flag15
+		bit21 = flag14
+		bit22 = flag13
+		bit23 = flag12
+		bit24 = flag11
+		bit25 = flag10
+		bit26 = flag9
+		bit27 =	flag8
+		bit30 = flag7
+		bit31 = flag6
+		bit32 = flag5
+		bit33 = flag4
+		bit34 = flag3
+		bit35 = flag2
+		bit36 = flag1
+		bit37 = flag0
+	RET
+		flag = num
+	RET_ARRAY
+		bits
+	END
+	OUTER_FOR (i = 0; i < 32; ++i) BEGIN
+		OUTER_SET j = 31 - i
+		OUTER_TEXT_SPRINT f $bits(~%j%~)
+		OUTER_TEXT_SPRINT $flags(~%i%~) ~%f%~
+	END
+END
+
+DEFINE_PATCH_FUNCTION ~PATCH_SPELL_FLAGS~
+	INT_VAR
+		flag = 0
+						//////////////////////////////////////////////////////////////////////////////////
+		flag0 = ~-1~ 	//	0	unknown						berserker				chaotic				//
+		flag1 = ~-1~ 	//	1	unknown						wizard slayer			evil				//
+		flag2 = ~-1~ 	//	2	unknown						kensai					good				//
+		flag3 = ~-1~ 	//	3	unknown						cavalier				...neutral			//
+		flag4 = ~-1~ 	//	4	unknown						inquisitor				lawful				//
+		flag5 = ~-1~ 	//	5	unknown						undead unter			neutral...			//
+		flag6 = ~-1~ 	//	6	unknown						abjurer					unused				//
+		flag7 = ~-1~ 	//	7	unknown						conjurer				unused				//
+		flag8 = ~-1~ 	//	8	unknown						diviner					unused				//
+		flag9 = ~-1~ 	//	9	break sanctuary				enchanter				unused				//
+		flag10 = ~-1~	//	10	hostile						illusionist				unused				//
+		flag11 = ~-1~ 	//	11	no los required				invoker					unused				//
+		flag12 = ~-1~ 	//	12	allow spotting				necromancer				unused				//
+		flag13 = ~-1~ 	//	13	outdoors only				transmuter				unused				//
+		flag14 = ~-1~ 	//	14	ignore dead/wild magic		generalist				unused				//
+		flag15 = ~-1~ 	//	15	ignore wild surge			archer					unused				//
+		flag16 = ~-1~ 	//	16	non combat ability			stalker					unused				//
+		flag17 = ~-1~ 	//	17	unknown						beastmaster				unused				//
+		flag18 = ~-1~ 	//	18	unknown						assassin				unused				//
+		flag19 = ~-1~ 	//	19	unknown						bounty unter			unused				//
+		flag20 = ~-1~ 	//	29	unknown						swashbuckler			unused				//
+		flag21 = ~-1~ 	//	21	unknown						blade					unused				//
+		flag22 = ~-1~ 	//	22	unknown						jester					unused				//
+		flag23 = ~-1~ 	//	23	unknown						skald					unused				//
+		flag24 = ~-1~ 	//	24	can target ivisible			cleric of talos			unused				//
+		flag25 = ~-1~ 	//	25	castable when silenced		cleric of helm			unused				//
+		flag26 = ~-1~ 	//	26	unknown						cleric of lathander		unused				//
+		flag27 = ~-1~ 	//	27	unknown						totemic druid			unused				//
+		flag28 = ~-1~ 	//	28	unknown						shapeshifter			unused				//
+		flag29 = ~-1~ 	//	28	unknown						avenger					unused				//
+		flag30 = ~-1~ 	//	30	unknown						barbarian				cleric/paladin		//
+		flag31 = ~-1~ 	//	31	unknown						wild mage				druid/ranger/shaman	//
+						//////////////////////////////////////////////////////////////////////////////////
+	RET
+		flag
+	RET_ARRAY
+		flags		
+BEGIN
+	LPF PATCH_BINARY
+	INT_VAR
+		num = flag
+		size = 4
+		bit00 = flag31
+		bit01 = flag30
+		bit02 = flag29
+		bit03 = flag28
+		bit04 = flag27
+		bit05 = flag26
+		bit06 = flag25
+		bit07 = flag24
+		bit10 = flag23
+		bit11 = flag22
+		bit12 = flag21
+		bit13 = flag20
+		bit14 = flag19
+		bit15 = flag18
+		bit16 = flag17
+		bit17 =	flag16
+		bit20 = flag15
+		bit21 = flag14
+		bit22 = flag13
+		bit23 = flag12
+		bit24 = flag11
+		bit25 = flag10
+		bit26 = flag9
+		bit27 =	flag8
+		bit30 = flag7
+		bit31 = flag6
+		bit32 = flag5
+		bit33 = flag4
+		bit34 = flag3
+		bit35 = flag2
+		bit36 = flag1
+		bit37 = flag0
+	RET
+		flag = num
+	RET_ARRAY
+		bits
+	END
+	FOR (i = 0; i < 32; ++i) BEGIN
+		j = 31 - i
+		TEXT_SPRINT f $bits(~%j%~)
+		TEXT_SPRINT $flags(~%i%~) ~%f%~
+	END
+END
+
+
+
+
+
+
+
+
