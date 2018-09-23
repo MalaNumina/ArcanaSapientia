@@ -89,9 +89,17 @@ BEGIN
 		WRITE_LONG 0x6a 0x72
 END
 
-//////////////////////////////////////////////////////////
+///////////////////////
+// COPY_SPELL_HEADER //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																	//
+//	Copies the ability header numbered as header_index parameter from the current spell and stores it in a header string variable.	//
+//	If keep_effect parameter has any value other than 0, all the ability effects are also copied and stored in the header variable.	//
+//	The returned header variable can be given to the ADD_SPELL_HEADER function to paste the copied ability.							//
+//																																	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-DEFINE_PATCH_FUNCTION ~STORE_SPELL_HEADER~
+DEFINE_PATCH_FUNCTION ~COPY_SPELL_HEADER~
 	INT_VAR
 		header_index = 0
 		keep_effects = 0
@@ -99,20 +107,20 @@ DEFINE_PATCH_FUNCTION ~STORE_SPELL_HEADER~
 		header
 BEGIN
 	LPF ~FJ_SPL_ITM_REINDEX~ END
-	READ_SHORT 0x68 hc //abilities count
+	READ_SHORT 0x68 hc
 	header_index = (header_index < 0) ? 0 : header_index
 	header_index = (header_index > hc - 1) ? (hc - 1) : header_index
 	PATCH_IF (header_index < 0) THEN BEGIN
-		PATCH_WARN ~%SOURCE_FILE% contains no abilities! Skipping STORE_SPELL_HEADER.~
+		PATCH_WARN ~%SOURCE_FILE% contains no abilities! Skipping COPY_SPELL_HEADER.~
 	END ELSE BEGIN
 		hs=0x28
-		READ_LONG 0x64 ho //abilities offset
+		READ_LONG 0x64 ho
 		READ_ASCII ho+(header_index)*hs header (hs)
 		PATCH_IF keep_effects THEN BEGIN
-			READ_SHORT ho+(header_index)*hs+0x1e ec //effects count
+			READ_SHORT ho+(header_index)*hs+0x1e ec
 			PATCH_IF ec THEN BEGIN
-				READ_LONG 0x6a eo //effects offset
-				READ_SHORT ho+(header_index)*hs+0x20 ei //first effect index
+				READ_LONG 0x6a eo
+				READ_SHORT ho+(header_index)*hs+0x20 ei
 				READ_ASCII eo+ei*0x30 effects (ec*0x30)
 				TEXT_SPRINT header ~%header%%effects%~
 			END
@@ -125,42 +133,95 @@ BEGIN
 	END
 END
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////
+// ADD_SPELL_HEADER //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																//
+//	Adds a new ability header to the current spell. If a header parameter is provided, the header referenced in that parameter	//
+//	is taken as a starting point (if the header contains any effect, those effects are also added to the current spell),		//
+//	but every other provided parameter will replace the corrispondig value in the source header.								//
+//	I found a basic version of this function in a library created by Ardanis, but I needed the cloning feature, so I wrote		//
+//	this extended version.																										//
+//																																//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 DEFINE_PATCH_FUNCTION ~ADD_SPELL_HEADER~
 	INT_VAR
-		type = 1
-		location = 4
-		target = 1
-		target_count = 0
-		range = 0
-		required_level = 1
-		speed = 0
-		projectile = 1
+		type = ~-1~
+		location = ~-1~
+		target = ~-1~
+		target_count = ~-1~
+		range = ~-1~
+		required_level = ~-1~
+		speed = ~-1~
+		projectile = ~-1~
 		insert_point = ~-1~
 	STR_VAR
-		header = ~*~
+		header = ~~
 		icon = ~*~
 	RET
 		insert_point
 BEGIN
 	LPF ~FJ_SPL_ITM_REINDEX~ END
 	hs=0x28
-	READ_LONG 0x64 ho //abilities offset
-	READ_SHORT 0x68 hc //abilities count
-	READ_LONG 0x6a eo //effects offset
+	READ_LONG 0x64 ho
+	READ_SHORT 0x68 hc
+	READ_LONG 0x6a eo
 	insert_point = (insert_point>hc || insert_point<0) ? hc : insert_point
-	
 	INSERT_BYTES ho+insert_point*hs hs
-	hc+=1
-    eo+=hs
+	eo += hs
 	PATCH_IF STRING_LENGTH ~%header%~ >= hs THEN BEGIN
 		PATCH_IF STRING_LENGTH ~%header%~ > hs THEN BEGIN
 			SNPRINT (0 - STRING_LENGTH ~%header%~ + hs) effects ~%header%~
 			SNPRINT hs header ~%header%~
+			PATCH_IF (insert_point = 0) THEN BEGIN
+				ei = 0
+				INNER_PATCH_SAVE header ~%header%~ BEGIN
+					READ_SHORT 0x1e ec
+					WRITE_SHORT 0x20 ei
+				END
+			END ELSE BEGIN
+				READ_SHORT ho + (insert_point - 1) * hs + 0x1e pec
+				READ_SHORT ho + (insert_point - 1) * hs + 0x20 pei
+				ei = pei + pec
+				INNER_PATCH_SAVE header ~%header%~ BEGIN
+					READ_SHORT 0x1e ec
+					WRITE_SHORT 0x20 ei
+				END
+			END
+			INSERT_BYTES (eo + ei * 0x30) STRING_LENGTH ~%effects%~
+			WRITE_ASCIIE (eo + ei * 0x30) ~%effects%~ (STRING_LENGTH ~%effects%~)
+			PATCH_IF (insert_point < hc) THEN BEGIN
+				FOR (i = (ho + (insert_point + 1) * hs + 0x20); i <= (ho + hc * hs + 0x20); i += hs) BEGIN
+					READ_SHORT i cei
+					cei += ec
+					WRITE_SHORT i cei
+				END
+			END
 		END
-		WRITE_ASCIIE ho+insert_point*hs ~%header%~ (hs)
+	END ELSE BEGIN
+		INNER_PATCH_SAVE header ~%header%~ BEGIN
+			INSERT_BYTES 0 hs
+			WRITE_BYTE 0x0 1
+			WRITE_SHORT 0x2 4
+			WRITE_BYTE 0xc 1
+			WRITE_SHORT 0x10 1
+			WRITE_SHORT 0x26 1
+		END
 	END
+	INNER_PATCH_SAVE header ~%header%~ BEGIN
+		PATCH_IF !(type = ~-1~) THEN BEGIN WRITE_BYTE 0x0 type END
+		PATCH_IF !(location = ~-1~) THEN BEGIN WRITE_SHORT 0x2 location END
+		PATCH_IF !(~%icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN WRITE_ASCIIE 0x4 ~%icon%~ (8) END
+		PATCH_IF !(target = ~-1~) THEN BEGIN WRITE_BYTE 0xc target END
+		PATCH_IF !(target_count = ~-1~) THEN BEGIN WRITE_BYTE 0xd target_count END
+		PATCH_IF !(range = ~-1~) THEN BEGIN WRITE_SHORT 0xe range END
+		PATCH_IF !(required_level = ~-1~) THEN BEGIN WRITE_SHORT 0x10 required_level END
+		PATCH_IF !(speed = ~-1~) THEN BEGIN WRITE_SHORT 0x12 speed END
+		PATCH_IF !(projectile = ~-1~) THEN BEGIN WRITE_SHORT 0x26 projectile END
+	END
+	WRITE_ASCIIE (ho + insert_point * hs) ~%header%~ (hs)
+	hc += 1
 	WRITE_SHORT 0x68 hc
 	WRITE_LONG 0x6a eo
 END
@@ -445,6 +506,7 @@ BEGIN
 		TEXT_SPRINT $flags(~%i%~) ~%f%~
 	END
 END
+
 
 
 

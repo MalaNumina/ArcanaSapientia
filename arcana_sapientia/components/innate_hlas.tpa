@@ -4,16 +4,6 @@
 
 COPY ~...inlined/W7/arcana_sapientia/DUMMY_DETECTION.W7~ ~override/innate_hlas.W7~
 
-COPY_EXISTING ~SPWI920.SPL~ ~override~
-	LPF STORE_SPELL_HEADER INT_VAR header_index = 0 RET header END
-BUT_ONLY
-
-LAF CREATE_SPELL STR_VAR source = ~SPWI920~ spell = ~W7TEST~ END
-COPY_EXISTING ~W7TEST.SPL~ ~override~
-	LPF ADD_SPELL_HEADER STR_VAR header = EVAL ~%header%~ END
-BUT_ONLY
-
-/*
 //////////////////////////////////
 //CREATE HLA ARCANE SPELLS ARRAY//
 //////////////////////////////////
@@ -68,7 +58,6 @@ LAF EDIT_CLASS_HLAS INT_VAR clear = 0 STR_VAR class_name = ~MAGE~ END
 LAF EDIT_CLASS_HLAS INT_VAR clear = 1 STR_VAR class_name = ~SORCERER~ END
 
 ACTION_CLEAR_ARRAY hla_spells
-*/
 
 
 
