@@ -2,7 +2,7 @@
 //CREATE DETECTION FILE FOR INNATE HIGH LEVEL ABILITIES COMPONENT//
 ///////////////////////////////////////////////////////////////////
 
-COPY ~...inlined/W7/arcana_sapientia/DUMMY_DETECTION.W7~ ~override/innate_hlas.W7~
+COPY ~...inlined/W7/%MOD_FOLDER%/DUMMY_DETECTION.W7~ ~override/innate_hlas.W7~
 
 //////////////////////////////////
 //CREATE HLA ARCANE SPELLS ARRAY//
@@ -58,9 +58,6 @@ LAF EDIT_CLASS_HLAS INT_VAR clear = 0 STR_VAR class_name = ~MAGE~ END
 LAF EDIT_CLASS_HLAS INT_VAR clear = 1 STR_VAR class_name = ~SORCERER~ END
 
 ACTION_CLEAR_ARRAY hla_spells
-
-
-
 
 
 

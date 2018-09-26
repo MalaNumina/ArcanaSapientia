@@ -5,23 +5,23 @@ VERSION ~v0.10~
 
 ALWAYS
 
-INCLUDE ~arcana_sapientia/lib/3rd_party/spl_itm_eff_functions.tpa~ //Courtesy of Ardanis
-INCLUDE ~arcana_sapientia/lib/W7_lib_utility.tpa~
-INCLUDE ~arcana_sapientia/lib/W7_lib_class.tpa~
-INCLUDE ~arcana_sapientia/lib/W7_lib_hla.tpa~
-INCLUDE ~arcana_sapientia/lib/W7_lib_spell.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_3rd.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_utility.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_class.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_hla.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_spell.tpa~
 
-<<<<<<<<...inlined/W7/arcana_sapientia/DUMMY_DETECTION.W7
+<<<<<<<<...inlined/W7/%MOD_FOLDER%/DUMMY_DETECTION.W7
 >>>>>>>>
 
-INCLUDE ~arcana_sapientia/components/core.tpa~
+INCLUDE ~%MOD_FOLDER%/components/core.tpa~
 
 END
 
 LANGUAGE
 	~English~
 	~english~
-	~arcana_sapientia/language/en_US/setup.tra~
+	~%MOD_FOLDER%/language/en_US/setup.tra~
 
 ///////////////////////////////////////
 //INSTALL INNATE HIGH LEVEL ABILITIES//
@@ -30,7 +30,7 @@ LANGUAGE
 BEGIN @100
 DESIGNATED 100
 
-INCLUDE ~arcana_sapientia/components/innate_hlas.tpa~
+INCLUDE ~%MOD_FOLDER%/components/innate_hlas.tpa~
 
 ////////////////////////////////
 //INSTALL SORCERER MANA SYSTEM//
@@ -39,4 +39,4 @@ INCLUDE ~arcana_sapientia/components/innate_hlas.tpa~
 BEGIN @300
 DESIGNATED 300
 
-INCLUDE ~arcana_sapientia/components/sorcerer_mana.tpa~
+INCLUDE ~%MOD_FOLDER%/components/sorcerer_mana.tpa~

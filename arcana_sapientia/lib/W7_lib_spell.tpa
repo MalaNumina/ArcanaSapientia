@@ -6,6 +6,7 @@
 //														//
 //	W7_lib_utility										//
 //	W7_lib_class										//
+//	W7_lib_3rd											//
 //														//
 //////////////////////////////////////////////////////////
 
@@ -167,8 +168,8 @@ BEGIN
 	READ_LONG 0x64 ho
 	READ_SHORT 0x68 hc
 	READ_LONG 0x6a eo
-	insert_point = (insert_point>hc || insert_point<0) ? hc : insert_point
-	INSERT_BYTES ho+insert_point*hs hs
+	insert_point = (insert_point > hc || insert_point < 0) ? hc : insert_point
+	INSERT_BYTES ho + insert_point * hs hs
 	eo += hs
 	PATCH_IF STRING_LENGTH ~%header%~ >= hs THEN BEGIN
 		PATCH_IF STRING_LENGTH ~%header%~ > hs THEN BEGIN
@@ -224,6 +225,102 @@ BEGIN
 	hc += 1
 	WRITE_SHORT 0x68 hc
 	WRITE_LONG 0x6a eo
+	READ_SHORT 0x70 ei
+    FOR (i = ho; i < (ho + hc * hs);i += hs) BEGIN
+      READ_SHORT (i + 0x1e) ec
+      WRITE_SHORT (i + 0x20) ei
+      ei += ec
+    END
+END
+
+//////////////////////////
+// CREATE_SPELL_VERSION //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																	//
+//	Creates a new spell named as spell parameter that casts the spell referenced in the source parameter. All the parameter in the	//
+//	source spell main header and first extended header are taken as a starting point, but any provided optional parameter will		//
+//	replace the corrisponding value in the new spell. The pourpose of this is to create a new version of a spell having some		//
+//	different parameter, without destroing or cloning the original																	//
+//																																	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+DEFINE_ACTION_FUNCTION ~CREATE_SPELL_VERSION~
+	INT_VAR
+		name = ~-1~
+		name_i = ~-1~
+		flags = ~-1~
+		type = ~-1~
+		ex_flags = ~-1~
+		animation = ~-1~
+		school = ~-1~
+		sectype = ~-1~
+		level = ~-1~
+		description = ~-1~
+		description_i = ~-1~		
+		header_type = ~-1~
+		location = ~-1~
+		target = ~-1~
+		target_count = ~-1~
+		range = ~-1~
+		required_level = ~-1~
+		speed = ~-1~
+	STR_VAR
+		source = ~*~
+		spell = ~W7DUMMYSPL~
+		sound = ~*~
+		icon = ~*~
+		header_icon = ~*~
+BEGIN
+	LAF CREATE_SPELL
+		INT_VAR
+			name = name
+			name_i = name_i
+			flags = flags
+			type = type
+			ex_flags = ex_flags
+			animation = animation
+			school = school
+			sectype = sectype
+			level = level
+			description = description
+			description_i = description_i
+		STR_VAR
+			source = EVAL ~%source%~
+			spell = EVAL ~%spell%~
+			sound = EVAL ~%sound%~
+			icon = EVAL ~%icon%~
+	END
+	COPY_EXISTING ~%source%.SPL~ ~override~
+		LPF COPY_SPELL_HEADER RET header END
+		INNER_PATCH ~%header%~ BEGIN
+			READ_BYTE 0xc trg
+			PATCH_IF (~%trg%~ STRING_EQUAL_CASE ~4~) THEN BEGIN
+				opc = 148
+				trg = 1
+			END ELSE BEGIN
+				opc = 146
+				trg = 2
+			END
+		END
+	BUT_ONLY
+	COPY_EXISTING ~%spell%.SPL~ ~override~
+		LPF ADD_SPELL_HEADER
+			INT_VAR
+				type = header_type
+				location = location
+				target = target
+				target_count = target_count
+				range = range
+				required_level = required_level
+				speed = speed
+				projectile = 1
+			STR_VAR
+				header = EVAL ~%header%~
+				icon = EVAL ~%header_icon%~
+		END
+		LPF ADD_SPELL_EFFECT INT_VAR opcode = opc parameter1 = 0 parameter2 = 1 target = trg timing = 1 header = 1 STR_VAR resource = EVAL ~%source%~ END
+	BUT_ONLY
 END
 
 ///////////////////////
@@ -277,28 +374,26 @@ DEFINE_ACTION_FUNCTION ~LIST_SPELLS~
 		plain_spells
 		hla_spells
 BEGIN
-	LAF LIST_CLASS_HLAS STR_VAR class_name = EVAL ~%class_name%~ RET ga_len RET_ARRAY hla_list END
 	ACTION_MATCH ~%class_name%~
 	WITH
-		~MAGE~ ~SORCERER~ ~BARD~ BEGIN OUTER_TEXT_SPRINT prfx ~SPWI~ END
-		~CLERIC~ ~PALADIN~ BEGIN OUTER_TEXT_SPRINT prfx ~SPPR~ OUTER_SET exc = 30 END
-		~DRUID~ ~RANGER~ ~SHAMAN~ BEGIN OUTER_TEXT_SPRINT prfx ~SPPR~ OUTER_SET exc = 31 END
+		~MAGE~ ~SORCERER~ ~BARD~ BEGIN OUTER_TEXT_SPRINT prfx ~SPWI~ OUTER_SET ctype = 1 END
+		~CLERIC~ ~PALADIN~ BEGIN OUTER_TEXT_SPRINT prfx ~SPPR~ OUTER_SET ctype = 2 OUTER_SET exc = 30 END
+		~DRUID~ ~RANGER~ ~SHAMAN~ BEGIN OUTER_TEXT_SPRINT prfx ~SPPR~ OUTER_SET ctype = 2 OUTER_SET exc = 31 END
 	DEFAULT
 		OUTER_TEXT_SPRINT prfx ~SPWI~
 	END		
 	LAF GET_HIDDEN_SPELLS STR_VAR type = EVAL ~%prfx%~ RET hidden_spells_len RET_ARRAY hidden_spells END
 	OUTER_SET plain_spells_len = 0
-	OUTER_SET hla_spells_len = 0
 	OUTER_SET cur_len = 0
 	OUTER_SET last_level = 0
 	COPY_EXISTING_REGEXP GLOB ~%prfx%[1-9]\(\([0-4][1-9]\)\|10\|20\|30\|40\|50\)\.spl~ ~override~
 		SNPRINT (7) spl ~%SOURCE_FILE%~
 		PATCH_IF !(VARIABLE_IS_SET $hidden_spells(~%spl%~)) OR ($hidden_spells(~%spl%~) = 0) THEN BEGIN
-			PATCH_IF !(~%prfx%~ STRING_EQUAL_CASE ~SPWI~) THEN BEGIN
+			PATCH_IF (ctype = 2) THEN BEGIN
 				READ_LONG 0x1e excflag
 				LPF PATCH_SPELL_FLAGS INT_VAR flag = excflag RET_ARRAY flags END								
 			END
-			PATCH_IF (~%prfx%~ STRING_EQUAL_CASE ~SPWI~) OR ($flags(~%exc%~) = 0) BEGIN
+			PATCH_IF (ctype = 1) OR ($flags(~%exc%~) = 0) BEGIN
 				READ_LONG 0x34 level
 				cur_len = (level = last_level) ? cur_len : 0
 				last_level = level
@@ -306,16 +401,26 @@ BEGIN
 				cur_len += 1
 				plain_spells_len += 1
 			END
-		END ELSE BEGIN
-			FOR (i = 0; i < ga_len; ++i) BEGIN
-				TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
-				PATCH_IF ~%hla%~ STRING_EQUAL_CASE ~%spl%~ THEN BEGIN
-					TEXT_SPRINT $hla_spells(~%hla%~) ~%hla_spells_len%~
-					hla_spells_len += 1
-				END
-			END
 		END
 	BUT_ONLY
+	LAF LIST_CLASS_HLAS STR_VAR class_name = EVAL ~%class_name%~ RET ga_len RET_ARRAY hla_list END
+	OUTER_SET hla_spells_len = 0
+	OUTER_FOR (i = 0; i < ga_len; ++i) BEGIN
+		OUTER_TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
+		COPY_EXISTING ~%hla%.SPL~ ~override~
+			READ_SHORT 0x1c type
+			PATCH_IF ~%type%~ STRING_EQUAL_CASE ~%ctype%~ THEN BEGIN
+				TEXT_SPRINT $hla_spells(~%hla%~) ~%hla_spells_len%~
+				hla_spells_len += 1
+			END
+		BUT_ONLY
+	END
+	ACTION_IF (plain_spells_len = 0) THEN BEGIN
+		OUTER_TEXT_SPRINT $plain_spells(~*~) ~*~
+	END
+	ACTION_IF (hla_spells_len = 0) THEN BEGIN
+		OUTER_TEXT_SPRINT $hla_spells(~*~) ~*~
+	END
 END
 
 //////////////////////////////
