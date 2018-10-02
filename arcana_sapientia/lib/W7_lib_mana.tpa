@@ -1,0 +1,245 @@
+/////////////////////////
+// INITIALIZE_KIT_MANA //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																													//
+//	If the table W7KITMANA doesn't exist, creates it and inserts the first two rows: row 0 is for all sorcerer		//
+//	kits not having their own row, while row 1 is for plain sorcerer. Each row of W7KITMANA will link a sorcerer	//
+//	kit name to the parameter that the mana system will use for it.													//
+//																													//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~INITIALIZE_KIT_MANA~
+BEGIN
+<<<<<<<<...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_KITMANA.2DA
+2DA V1.0
+****
+ KIT_NAME PREFIX BASE_MANA CHARISMA_FACTOR ID
+>>>>>>>>
+	ACTION_IF !(FILE_EXISTS ~override/W7KITMANA.2DA~) THEN BEGIN
+		COPY ~...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_KITMANA.2DA~ ~override/W7KITMANA.2DA~
+		APPEND ~W7KITMANA.2DA~ ~0 GENERIC_KIT @ 50 6 *~
+		APPEND ~W7KITMANA.2DA~ ~1 SORCERER _ 100 6 0x00004000~
+		COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+			PRETTY_PRINT_2DA
+		BUT_ONLY
+	END
+	LAF CREATE_MANA_REFERENCE INT_VAR type = 0 END
+	LAF CREATE_MANA_REFERENCE INT_VAR type = 1 END
+END
+
+//////////////////
+// ADD_KIT_MANA //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																//
+//	Adds a new kit mana type to W7KITMANA. This function can be used by anyone who wants to design a new sorcerer kit, making	//
+//	it compatible with Arcana Sapientia mana system. In order to do this, you only need to include this library in your mod	and	//
+//	LAF ADD_KIT_MANA with your desired parameters. Arcana Sapientia (which needs to come AFTER your mod in install order) will	//
+//	take care of everything else. There are four parameter:																		//
+//																																//
+//	- kit_name: the name of the kit you want to insert, as it is in KITLIST.2DA.												//
+//																																//
+//	- prefix: a unique prefix to be used by mana system for various things which need to be kit specific. The prefix can only	//
+//	  be a single upercase letter (A - Z). Anything else will be treated as a blank parameter. If a valid prefix is provided	//
+//	  and it is available (not already assigned to some other kit in W7KITMANA), the function will assign it to the new kit, 	//
+//	  otherwise it will be treated as a blank parameter.																		//
+//	  If the prefix parameter is blank (invalid, already assigned, or not provided), The function wil try to use the first		//
+//	  letter of kit_name if available, otherwise it will assign the first available prefix to the new kit.						//
+//	  This sistem supports a maximum of 26 kit using unique mana parameters. The function will refuse to insert the 27th.		//
+//																																//
+//	- base_mana: the amount of base mana the kit will gain for each level of experience, expressed in hundredths of point 		//
+//	  (so 50 means half a point).																								//
+//																																//
+//	- chr_factor: the number of charisma points (starting at 13) which will give the kit an additional whole mana point per 	//
+//	  level of experience. 																										//
+//																																//
+//	The total amount of mana recived by the kit will therefore be equal to base_mana + (charisma - 13)/chr_factor mana points	//
+//	per level. Keep in mind that the final mana amount will be rounded after every calculation to the nearest integer.			//
+//	A kit will need its prefix to be exclusive only if it has unique values for base_mana or chr_factor, so if you try to		//
+//	insert a new kit using a combination of base_mana and chr_factor already present in W7KITMANA, it will get the same prefix	//
+//	as the kit(s) sharing that parameters, saving the not needed prefix for some other kit.										//
+//																																//
+//	Note:																														//
+//	This procedure is only required if you want your kit to have non standard base_mana and/or chr_factor parameters. Every 	//
+//	new sorcerer kit will work with the mana system just fine, even if it isn't listed in W7KITMANA: Arcana Sapientia will		//
+//	simply apply to any unlisted kit the parameters specified in GENERIC_KIT row of W7KITMANA.									//
+//																																//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~ADD_KIT_MANA~
+	INT_VAR
+		base_mana = 50
+		chr_factor = 6
+	STR_VAR
+		kit_name = ~~
+		prefix = ~*~
+BEGIN
+	COPY_EXISTING ~KITLIST.2DA~ ~override~
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		FOR (row = 0; row < rows; row += 1) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 1 kname
+			PATCH_IF (~%kname%~ STRING_EQUAL_CASE ~%kit_name%~) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 8 cnum
+				PATCH_IF IS_AN_INT cnum BEGIN
+					PATCH_IF (cnum = 19) BEGIN
+						READ_2DA_ENTRY_FORMER rows row 9 kit_id
+					END
+				END
+			END
+		END		
+	BUT_ONLY
+	ACTION_IF (VARIABLE_IS_SET kit_id) THEN BEGIN
+		LAF INITIALIZE_KIT_MANA END
+		COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+			COUNT_2DA_COLS cols
+			READ_2DA_ENTRIES_NOW rows cols
+			FOR (row = 0; row < rows; row += 1) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 2 prfx
+				READ_2DA_ENTRY_FORMER rows row 3 bmn
+				READ_2DA_ENTRY_FORMER rows row 4 chrf
+				TEXT_SPRINT $ex_prfx(~%prfx%~) ~%row%~
+				TEXT_SPRINT $ex_parms(~%bmn%~ ~%chrf%~) ~%prfx%~
+			END
+		BUT_ONLY
+		ACTION_IF (VARIABLE_IS_SET $ex_parms(~%base_mana%~ ~%chr_factor%~)) THEN BEGIN
+			OUTER_TEXT_SPRINT prefix $ex_parms(~%base_mana%~ ~%chr_factor%~)
+			PRINT ~W7KITMANA already contains the given mana parameters: using %prefix% prefix for %kit_name%!~
+		END ELSE BEGIN
+			ACTION_IF !(~%prefix%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+				ACTION_IF (STRING_LENGTH ~%prefix%~ > 1) THEN BEGIN
+					OUTER_SNPRINT 1 prefix ~%prefix%~
+				END
+				ACTION_TO_UPPER prefix
+				OUTER_INNER_PATCH_SAVE prefix ~%prefix%~ BEGIN
+					READ_BYTE 0 prfx
+					PATCH_IF ((prfx < 65) OR (prfx > 90)) THEN BEGIN
+						WRITE_BYTE 0 42
+					END
+				END
+			END
+			ACTION_IF (~%prefix%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+				OUTER_SNPRINT 1 prefix ~%kit_name%~
+				ACTION_TO_UPPER prefix
+				OUTER_INNER_PATCH_SAVE prefix ~%prefix%~ BEGIN
+					READ_BYTE 0 prfx
+					PATCH_IF ((prfx < 65) OR (prfx > 90)) THEN BEGIN
+						WRITE_BYTE 0 64
+					END
+				END
+			END
+			ACTION_IF (VARIABLE_IS_SET $ex_prfx(~%prefix%~)) THEN BEGIN
+				OUTER_FOR (i = 65; i < 91; ++i) BEGIN
+					OUTER_INNER_PATCH_SAVE prfx ~%prefix%~ BEGIN
+						WRITE_BYTE 0 i
+					END
+					ACTION_IF (VARIABLE_IS_SET $ex_prfx(~%prfx%~)) THEN BEGIN
+						OUTER_TEXT_SPRINT prfx ~*~
+					END ELSE BEGIN
+						OUTER_SET i = 91
+					END
+				END
+				ACTION_IF (~%prfx%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+					WARN ~Cannot add %kit_name% mana type: W7KITMANA is already full!~
+				END ELSE BEGIN
+				 PRINT ~Prefix %prefix% already existing in W7KITMANA: using %prfx% prefix for %kit_name%.~
+				 OUTER_TEXT_SPRINT prefix ~%prfx%~
+				END
+			END
+		END
+		APPEND ~W7KITMANA.2DA~ ~%rows% %kit_name% %prefix% %base_mana% %chr_factor% %kit_id%~
+		LAF CREATE_MANA_REFERENCE INT_VAR type = rows END
+		COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+			PRETTY_PRINT_2DA
+		BUT_ONLY
+	END ELSE BEGIN
+		WARN ~%kit_name% not found in Sorcerer kit list!~
+	END
+END
+
+///////////////////////////
+// CREATE_MANA_REFERENCE //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																//
+//	Generates a table named W7S(kit prefix)MANAREF.2DA listing exactly how much mana the given kit will get and how fast it		//
+//	will regenerate for each combination of level and charisma. The kit is specified by passing its row on W7KITMANA in the		//
+//	type parameter. This function is automatically called by ADD_KIT_MANA and there is no reason to use it anywhere else.		//
+//	The generated table serves no other purpose than provide a user reference.													//
+//																																//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~CREATE_MANA_REFERENCE~
+	INT_VAR
+		type = 0
+BEGIN
+<<<<<<<<...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_MANA_TABLE.2DA
+2DA V1.0
+****
+ CHR<=13 CHR=14 CHR=15 CHR=16 CHR=17 CHR=18 CHR=19 CHR=20 CHR=21 CHR=22 CHR=23 CHR=24 CHR=25
+>>>>>>>>
+	COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRY type 2 cols prfx
+		READ_2DA_ENTRY type 3 cols base_mana
+		READ_2DA_ENTRY type 4 cols chr_factor
+	BUT_ONLY
+	OUTER_TEXT_SPRINT mana_table ~W7S%prfx%MANAREF.2DA~
+	ACTION_IF (NOT FILE_EXISTS_IN_GAME ~%mana_table%~) THEN BEGIN
+		COPY ~...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_MANA_TABLE.2DA~ ~override/%mana_table%~
+			FOR (i = 1; i <= 50; ++i) BEGIN
+				TEXT_SPRINT row ~LVL%i%~
+				FOR (j = 13; j <= 25; ++j) BEGIN
+					LPF CALCULATE_MANA INT_VAR base_mana = base_mana chr_factor = chr_factor charisma = j level = i RET max_mana mana_regen END
+					TEXT_SPRINT row ~%row% %max_mana%pt-%mana_regen%s~
+				END
+				TEXT_SPRINT $rows(~%i%~) ~%row%~
+			END
+		ACTION_PHP_EACH rows AS r => v BEGIN
+			APPEND ~%mana_table%~ ~%v%~
+		END
+		COPY_EXISTING ~%mana_table%~ ~override~
+			PRETTY_PRINT_2DA
+		BUT_ONLY
+	END
+END
+
+////////////////////
+// CALCULATE_MANA //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																															//
+//	Calculates maximum mana and mana regeneration speed based on the given base_mana and chr_factor at the given charisma 	//
+//	and level. Moreover, calculates the amount of mana regenerated in the given amount of hours.							//
+//																															//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~CALCULATE_MANA~
+	INT_VAR
+		base_mana = 50
+		chr_factor = 6
+		charisma = 13
+		level = 1
+		hours = 1
+	RET
+		max_mana
+		mana_regen
+		mana_hours
+BEGIN
+	min_charisma = 13
+	max_mana = (base_mana + (charisma - min_charisma) * 100 / chr_factor) * level
+	max_mana = ((max_mana REM 100) < 50) ? (max_mana / 100) : (max_mana / 100 + 1)
+	max_mana = (max_mana > 99) ? 99 : max_mana
+	mana_regen = 240000 / max_mana
+	mana_regen = ((mana_regen REM 100) < 50) ? (mana_regen / 100) : (mana_regen / 100 + 1)
+	mana_hours = max_mana * 100 / 8 * hours
+	mana_hours = ((mana_hours REM 100) < 50) ? (mana_hours / 100) : (mana_hours / 100 + 1)
+END
+
+
+
+
+
+
+
+
+
+
+

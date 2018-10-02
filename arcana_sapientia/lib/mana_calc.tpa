@@ -1,10 +1,37 @@
+OUTER_TEXT_SPRINT $W7_mana_types(~SORCERER~) ~0x00004000 _ 100~
+COPY_EXISTING ~KITLIST.2DA~ ~override~
+	COUNT_2DA_COLS cols
+	READ_2DA_ENTRIES_NOW rows cols
+	FOR (row = 0; row < rows; row += 1) BEGIN
+		READ_2DA_ENTRY_FORMER rows row 8 cnum
+		PATCH_IF IS_AN_INT cnum BEGIN
+			PATCH_IF (cnum = 19) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 kname
+				READ_2DA_ENTRY_FORMER rows row 9 kid
+				PATCH_MATCH ~%kname%~
+				WITH
+					~DRAGON_DISCIPLE~ BEGIN TEXT_SPRINT prfx ~D~ base_mana = 50 END
+				DEFAULT
+					TEXT_SPRINT prfx ~@~ base_mana = 50
+				END
+				TEXT_SPRINT $W7_mana_types(~%kname%~) ~%kid% %prfx% %base_mana%~
+			END
+		END
+	END
+BUT_ONLY
+
+ACTION_PHP_EACH W7_mana_types AS k => v BEGIN
+	PRINT ~%k% = %v%~
+END
+
 DEFINE_PATCH_FUNCTION ~CALCULATE_MANA~
 	INT_VAR
-		type = 0
 		charisma = 13
 		level = 1
 		hours = 1
 		reference = 0
+	STR_VAR
+		kit_name = ~SORCERER~
 	RET
 		max_mana
 		mana_regen
@@ -12,20 +39,10 @@ DEFINE_PATCH_FUNCTION ~CALCULATE_MANA~
 BEGIN
 	min_charisma = 13
 	factor = 6
-	PATCH_MATCH type
-	WITH
-		1 BEGIN //PLAIN SORCERER
-			base_mana = 100
-			PATCH_IF (reference > 0) THEN BEGIN TEXT_SPRINT mana_table ~W7S_MNRF.2DA~ END
-		END
-		2 BEGIN //DRAGON DISCIPLE
-			base_mana = 50
-			PATCH_IF (reference > 0) THEN BEGIN TEXT_SPRINT mana_table ~W7SDMNRF.2DA~ END
-		END
-		DEFAULT //GENERIC KIT
-			base_mana = 50
-			PATCH_IF (reference > 0) THEN BEGIN TEXT_SPRINT mana_table ~W7S@MNRF.2DA~ END
-	END	
+	TEXT_SPRINT kit_str $W7_mana_types(~%kit_name%~)
+	LPF PATCH_STRING_SPLIT STR_VAR string = EVAL ~%kit_str%~ RET_ARRAY kit_array = split_strings END
+	TEXT_SPRINT base_mana $kit_array(~2~)
+	
 	max_mana = (base_mana + (charisma - min_charisma) * 100 / factor) * level
 	max_mana = ((max_mana REM 100) < 50) ? (max_mana / 100) : (max_mana / 100 + 1)
 	max_mana = (max_mana > 99) ? 99 : max_mana
@@ -33,7 +50,10 @@ BEGIN
 	mana_regen = ((mana_regen REM 100) < 50) ? (mana_regen / 100) : (mana_regen / 100 + 1)
 	mana_hours = max_mana * 100 / 8 * hours
 	mana_hours = ((mana_hours REM 100) < 50) ? (mana_hours / 100) : (mana_hours / 100 + 1)
+	
 	PATCH_IF (reference > 0) THEN BEGIN
+		TEXT_SPRINT prfx $kit_array(~1~)
+		TEXT_SPRINT mana_table ~W7S%prfx%MNRF.2DA~
 		INNER_ACTION BEGIN
 <<<<<<<<...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_MANA_TABLE.2DA
 2DA V1.0

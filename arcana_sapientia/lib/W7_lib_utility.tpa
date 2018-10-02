@@ -2,38 +2,50 @@
 // PATCH/ACTION_PADDING //
 //////////////////////////////////////////////////////////////////////////////////
 //																				//
-//	Pads the given nuber by the amount of zeros defined in the pad parameter.	//
+//	Pads the given nuber to the amount of digits defined in the pad parameter.	//
 //																				//
 //////////////////////////////////////////////////////////////////////////////////
 
 DEFINE_PATCH_FUNCTION ~PATCH_PADDING~
 	INT_VAR
 		num = 0
-		pad = 1
+		pad = 2
 	RET
 		pad_num
 BEGIN
-	TEXT_SPRINT pad_num ~~
-	FOR (i = pad; i > 0; --i) BEGIN
-		max = 10 ** i
-		PATCH_IF (num < max) THEN BEGIN TEXT_SPRINT pad_num ~%pad_num%0~ END
+	num_len = STRING_LENGTH ~%num%~
+	PATCH_IF (num_len < pad) THEN BEGIN
+		pad_len = pad - num_len
+		INNER_PATCH_SAVE pad_num ~%num%~ BEGIN
+			INSERT_BYTES 0 pad_len
+			FOR (i = 0; i < pad_len; ++i) BEGIN
+				WRITE_BYTE i 48
+			END
+		END
+	END ELSE BEGIN
+		TEXT_SPRINT pad_num ~%num%~
 	END
-	TEXT_SPRINT pad_num ~%pad_num%%num%~
 END
 
 DEFINE_ACTION_FUNCTION ~ACTION_PADDING~
 	INT_VAR
 		num = 0
-		pad = 1
+		pad = 2
 	RET
 		pad_num
 BEGIN
-	OUTER_TEXT_SPRINT pad_num ~~
-	OUTER_FOR (i = pad; i > 0; --i) BEGIN
-		OUTER_SET max = 10 ** i
-		ACTION_IF (num < max) THEN BEGIN OUTER_TEXT_SPRINT pad_num ~%pad_num%0~ END
+	OUTER_SET num_len = STRING_LENGTH ~%num%~
+	ACTION_IF (num_len < pad) THEN BEGIN
+		OUTER_SET pad_len = pad - num_len
+		OUTER_INNER_PATCH_SAVE pad_num ~%num%~ BEGIN
+			INSERT_BYTES 0 pad_len
+			FOR (i = 0; i < pad_len; ++i) BEGIN
+				WRITE_BYTE i 48
+			END
+		END
+	END ELSE BEGIN
+		OUTER_TEXT_SPRINT pad_num ~%num%~
 	END
-	OUTER_TEXT_SPRINT pad_num ~%pad_num%%num%~
 END
 
 /////////////////////////
@@ -180,44 +192,107 @@ BEGIN
 	OUTER_SET num = 0 BOR ~%bin%~
 END
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////
+// PATCH/ACTION_STRING_SPLIT //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																														//
+//	Splits the given string into separate substrings, using the split parameter (which can be any single character) as	//
+//	a mean to determin where to split. The substrings are stored in the split_strings array.							//
+//																														//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-DEFINE_ACTION_FUNCTION ~ACTION_STRING_REPLACE~
-	INT_VAR
-		amount = 0
+DEFINE_PATCH_FUNCTION ~PATCH_STRING_SPLIT~
 	STR_VAR
 		string = ~~
-		find = ~*~
-		replace = ~~
+		split = ~ ~
 	RET
-		string
+		string_count
+	RET_ARRAY
+		split_strings
 BEGIN
-	OUTER_SET len = (STRING_LENGTH ~%find%~)
-	OUTER_INNER_PATCH ~%find%~ BEGIN
-		FOR (i = 0; i < len; ++i) BEGIN
-			READ_BYTE i ~b~
-			TEXT_SPRINT $find_array(~%i%~) ~%b%~
+	str_len = STRING_LENGTH ~%string%~
+	PATCH_IF (str_len > 0) THEN BEGIN
+		INNER_PATCH ~%split%~ BEGIN
+			READ_BYTE 0 spl
 		END
-	END
-	ACTION_IF (len > 0) THEN BEGIN
-		OUTER_SET max = (STRING_LENGTH ~%string%~) - len + 1
-		OUTER_INNER_PATCH_SAVE strrep ~%string%~ BEGIN
-			FOR (i = 0; i < max; ++i) BEGIN
-				match = 0
-				FOR (j = i; j < i + len; ++j) BEGIN
-					h = j - i
-					READ_BYTE j ~b~
-					PATCH_IF $find_array(~%h%~) = ~%b%~ THEN BEGIN
-						match += 1
-					END ELSE BEGIN
-						j = i + len
-					END
+		id = 0
+		TEXT_SPRINT cstr ~~
+		c = 0
+		FOR (i = 0; i < str_len; ++i) BEGIN
+			INNER_PATCH ~%string%~ BEGIN
+				READ_BYTE i by				
+			END
+			PATCH_IF (by != spl) THEN BEGIN
+				INNER_PATCH_SAVE cstr ~%cstr%~ BEGIN
+					INSERT_BYTES c 1
+					WRITE_BYTE c by
 				END
-				PATCH_IF (match = len) THEN BEGIN
-					PATCH_PRINT ~FOUND!~
+				PATCH_IF (i != str_len - 1) THEN BEGIN
+					c += 1
+				END ELSE BEGIN
+					c = 0
 				END
+			END ELSE BEGIN
+				SET c = 0
+			END
+			PATCH_IF ((c = 0) AND (STRING_LENGTH ~%cstr%~ > 0)) THEN BEGIN
+				TEXT_SPRINT $split_strings(~%id%~) ~%cstr%~
+				TEXT_SPRINT cstr ~~
+				id += 1
 			END
 		END
+		string_count = id
+	END ELSE BEGIN
+		TEXT_SPRINT $split_strings(~*~) ~*~
+		string_count = 0
+	END
+END
+
+
+DEFINE_ACTION_FUNCTION ~ACTION_STRING_SPLIT~
+	STR_VAR
+		string = ~~
+		split = ~ ~
+	RET
+		string_count
+	RET_ARRAY
+		split_strings
+BEGIN
+	OUTER_SET str_len = STRING_LENGTH ~%string%~
+	ACTION_IF (str_len > 0) THEN BEGIN
+		OUTER_INNER_PATCH ~%split%~ BEGIN
+			READ_BYTE 0 spl
+		END
+		OUTER_SET id = 0
+		OUTER_TEXT_SPRINT cstr ~~
+		OUTER_SET c = 0
+		OUTER_FOR (i = 0; i < str_len; ++i) BEGIN
+			OUTER_INNER_PATCH ~%string%~ BEGIN
+				READ_BYTE i by				
+			END
+			ACTION_IF (by != spl) THEN BEGIN
+				OUTER_INNER_PATCH_SAVE cstr ~%cstr%~ BEGIN
+					INSERT_BYTES c 1
+					WRITE_BYTE c by
+				END
+				ACTION_IF (i != str_len - 1) THEN BEGIN
+					OUTER_SET c += 1
+				END ELSE BEGIN
+					OUTER_SET c = 0
+				END
+			END ELSE BEGIN
+				OUTER_SET c = 0
+			END
+			ACTION_IF ((c = 0) AND (STRING_LENGTH ~%cstr%~ > 0)) THEN BEGIN
+				OUTER_TEXT_SPRINT $split_strings(~%id%~) ~%cstr%~
+				OUTER_TEXT_SPRINT cstr ~~
+				OUTER_SET id += 1
+			END
+		END
+		OUTER_SET string_count = id
+	END ELSE BEGIN
+		OUTER_TEXT_SPRINT $split_strings(~*~) ~*~
+		OUTER_SET string_count = 0
 	END
 END
 
