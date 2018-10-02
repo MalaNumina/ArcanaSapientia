@@ -202,6 +202,67 @@ BEGIN
 	END
 END
 
+//////////////////
+// GET_KIT_MANA //
+//////////////////////////////////////////////////////////////
+//															//
+//	Returns all the mana parameters for the given kit_name	//
+//															//
+//////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~GET_KIT_MANA~
+	INT_VAR
+		kit_name = ~SORCERER~
+	RET
+		prefix
+		base_mana
+		chr_factor
+		id
+BEGIN
+	LAF INITIALIZE_KIT_MANA END
+	COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		found = 0
+		FOR (row = 0; row < rows; row += 1) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 1 name
+			PATCH_IF (~%name%~ STRING_EQUAL_CASE ~%kit_name%~) THEN BEGIN
+				READ_2DA_ENTRY_FORMER rows row 2 prefix
+				READ_2DA_ENTRY_FORMER rows row 3 base_mana
+				READ_2DA_ENTRY_FORMER rows row 4 chr_factor
+				READ_2DA_ENTRY_FORMER rows row 5 id
+				found = 1
+				row = rows
+			END
+		END
+		PATCH_IF (found = 0) THEN BEGIN
+			READ_2DA_ENTRY_FORMER rows 0 2 prefix
+			READ_2DA_ENTRY_FORMER rows 0 3 base_mana
+			READ_2DA_ENTRY_FORMER rows 0 4 chr_factor
+			READ_2DA_ENTRY_FORMER rows 0 5 id
+		END
+	BUT_ONLY
+END
+
+DEFINE_ACTION_FUNCTION ~GET_MANA_TYPES~
+	RET_ARRAY
+		mana_types
+BEGIN
+	COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		FOR (row = 0; row < rows; row += 1) BEGIN
+			READ_2DA_ENTRY_FORMER rows row 2 prefix
+			READ_2DA_ENTRY_FORMER rows row 3 base_mana
+			READ_2DA_ENTRY_FORMER rows row 4 chr_factor
+			READ_2DA_ENTRY_FORMER rows row 5 id
+			PATCH_IF !(VARIABLE_IS_SET $mana_types(~%prefix%~ ~%base_mana%~ ~%chr_factor%~)) THEN BEGIN
+				TEXT_SPRINT $mana_types(~%prefix%~ ~%base_mana%~ ~%chr_factor%~) ~%id%~
+			END
+		END
+	BUT_ONLY
+END
+
 ////////////////////
 // CALCULATE_MANA //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

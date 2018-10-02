@@ -2,7 +2,7 @@
 //INCLUDE FUNCTION LIBRARIES//
 //////////////////////////////
 
-INCLUDE ~%MOD_FOLDER%/lib/mana_calc.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_mana.tpa~
 
 /////////////////////////////////////////////////////
 //CREATE DETECTION FILE FOR SORCERER MANA COMPONENT//
@@ -248,8 +248,8 @@ OUTER_FOR (i = 13; i <= 25; ++i) BEGIN
 	COPY_EXISTING ~W7S@MR%i%.spl~ ~override~
 		FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
 			LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
-			LPF CALCULATE_MANA INT_VAR charisma = i level = j reference = 1 RET mm = max_mana mr = mana_regen END
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = (mr - 1) resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MM##~ END			
+			LPF CALCULATE_MANA INT_VAR base_mana = 100 chr_factor = 6 charisma = i level = j reference = 1 RET mm = max_mana mr = mana_regen END
+			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = (mr - 1) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MM##~ END			
 			LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = (mm - 1) parameter2 = cm_lt target = 1 timing = 4 duration = mr resist_dispel = 2 header = j STR_VAR resource = ~W7S@MR##~ END
 			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 11 parameter2 = 2 target = 1 timing = 4 duration = mr resist_dispel = 2 header = j STR_VAR resource = ~W7S@CM&&~ END
 			LPF ADD_SPELL_EFFECT INT_VAR opcode = 318 parameter1 = 0 parameter2 = 0 target = 1 timing = 0 duration = (mr - 1) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MR##~ END
@@ -376,7 +376,7 @@ OUTER_FOR (i = 13; i <= 25; ++i) BEGIN
 		FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
 			LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
 			FOR (h = 1; h <= 8; ++h) BEGIN
-				LPF CALCULATE_MANA INT_VAR charisma = i level = j hours = h RET m = mana_hours END
+				LPF CALCULATE_MANA INT_VAR base_mana = 100 chr_factor = 6 charisma = i level = j hours = h RET m = mana_hours END
 				m += 1
 				LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = m parameter2 = 2 target = 1 timing = 4 duration = (300 * h) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MH&&~ END
 			END
@@ -426,7 +426,7 @@ OUTER_FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
 	COPY_EXISTING ~W7S@MM%i%.spl~ ~override~
 		FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
 			LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
-			LPF CALCULATE_MANA INT_VAR charisma = i level = j RET mm = max_mana END
+			LPF CALCULATE_MANA INT_VAR base_mana = 100 chr_factor = 6 charisma = i level = j RET mm = max_mana END
 			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = (mm + 1) parameter2 = 2 target = 1 timing = 1 resist_dispel = 2 header = j STR_VAR resource = ~W7S@MM$$~ END
 		END
 	BUT_ONLY
@@ -499,9 +499,6 @@ COPY_EXISTING ~W7S@LV&&.spl~ ~override~
 	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MM##~ END
 	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MH##~ END
 	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MR##~ END
-	//LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = 19 parameter2 = 105 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MM##~ END
-	//LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = 19 parameter2 = 105 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MH##~ END
-	//LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = 19 parameter2 = 105 target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MR##~ END
 BUT_ONLY
 
 ////////////////////////////////////////////////////////////////////////////////
