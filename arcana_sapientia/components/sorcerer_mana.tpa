@@ -67,50 +67,53 @@ END ELSE BEGIN
 	ACTION_CLEAR_ARRAY hla_spells_temp
 END
 
-///////////////////////////////////////
-//PATCH SORCERER CLAB FOR MANA SYSTEM//
-///////////////////////////////////////
+////////////////////////////////////////
+//PATCH SORCERER CLABS FOR MANA SYSTEM//
+////////////////////////////////////////
 
-COPY_EXISTING ~CLABMA01.2DA~ ~override~
-	COUNT_2DA_COLS cols
-	COUNT_2DA_ROWS cols rows
-	PATCH_IF (rows = 1) THEN BEGIN
-		READ_2DA_ENTRIES_NOW entries cols
-		blank = 1
-		FOR (col = 1; col < cols; ++col) BEGIN
-			READ_2DA_ENTRY_FORMER entries 0 col ~entry~
-			PATCH_IF !(~%entry%~ STRING_EQUAL ~****~) THEN BEGIN
-				blank = 0
+LAF LIST_CLASS_KITS INT_VAR class_num = 19 RET_ARRAY kit_list END
+OUTER_TEXT_SPRINT $kit_list(~SORCERER~) ~*~
+
+ACTION_PHP_EACH kit_list AS kit => n BEGIN
+	LAF GET_CLAB_TABLE STR_VAR kit_name = EVAL ~%kit%~ RET kit_clab = clab_table END
+	COPY_EXISTING ~%kit_clab%~ ~override~
+		COUNT_2DA_COLS cols
+		COUNT_2DA_ROWS cols rows
+		PATCH_IF (rows = 1) THEN BEGIN
+			READ_2DA_ENTRIES_NOW entries cols
+			blank = 1
+			FOR (col = 1; col < cols; ++col) BEGIN
+				READ_2DA_ENTRY_FORMER entries 0 col ~entry~
+				PATCH_IF !(~%entry%~ STRING_EQUAL ~****~) THEN BEGIN
+					blank = 0
+				END
+			END
+			PATCH_IF (blank = 1) THEN BEGIN
+				REMOVE_2DA_ROW 0 cols
+				rows -= 1
 			END
 		END
-		PATCH_IF (blank = 1) THEN BEGIN
-			REMOVE_2DA_ROW 0 cols
-			rows -= 1
+	BUT_ONLY
+	OUTER_SET rows += 1
+	OUTER_TEXT_SPRINT clabrow ~ABILITY%rows% AP_W7S@IN##~
+	OUTER_FOR (i = 2; i < cols; ++i) BEGIN
+		OUTER_TEXT_SPRINT clabrow ~%clabrow% AP_W7S@LV##~
+	END
+	APPEND ~%kit_clab%~ ~%clabrow%~
+	OUTER_SET rows += 1
+	OUTER_TEXT_SPRINT clabrow ~ABILITY%rows%~
+	OUTER_FOR (i = 1; i < cols; ++i) BEGIN
+		ACTION_IF (i < hla_min_lvl) THEN BEGIN
+			OUTER_TEXT_SPRINT clabrow ~%clabrow% ****~
+		END ELSE BEGIN
+			OUTER_TEXT_SPRINT clabrow ~%clabrow% AP_W7S@HIRM~
 		END
 	END
-BUT_ONLY
-
-OUTER_SET rows += 1
-OUTER_TEXT_SPRINT clabrow ~ABILITY%rows% AP_W7S@IN##~
-OUTER_FOR (i = 2; i < cols; ++i) BEGIN
-	OUTER_TEXT_SPRINT clabrow ~%clabrow% AP_W7S@LV##~
+	APPEND ~%kit_clab%~ ~%clabrow%~
+	COPY_EXISTING ~%kit_clab%~ ~override~
+		PRETTY_PRINT_2DA
+	BUT_ONLY
 END
-APPEND ~CLABMA01.2DA~ ~%clabrow%~
-
-OUTER_SET rows += 1
-OUTER_TEXT_SPRINT clabrow ~ABILITY%rows%~
-OUTER_FOR (i = 1; i < cols; ++i) BEGIN
-	ACTION_IF (i < hla_min_lvl) THEN BEGIN
-		OUTER_TEXT_SPRINT clabrow ~%clabrow% ****~
-	END ELSE BEGIN
-		OUTER_TEXT_SPRINT clabrow ~%clabrow% AP_W7S@HIRM~
-	END
-END
-APPEND ~CLABMA01.2DA~ ~%clabrow%~
-
-COPY_EXISTING ~CLABMA01.2DA~ ~override~
-	PRETTY_PRINT_2DA
-BUT_ONLY
 
 /////////////////////////////////
 //PATCH SORCERER SPELL PER REST//
@@ -168,6 +171,7 @@ BUT_ONLY
 //CREATE MANA AND CHARISMA ROWS IN SPLPROT.2DA//
 ////////////////////////////////////////////////
 
+APPEND ~splprot.2da~ ~W7_KIT_EQ%TAB%152%TAB%-1%TAB%1~
 APPEND ~splprot.2da~ ~W7_CHR_LT%TAB%42%TAB%-1%TAB%0~
 APPEND ~splprot.2da~ ~W7_CHR_EQ%TAB%42%TAB%-1%TAB%1~
 APPEND ~splprot.2da~ ~W7_CM_LT%TAB%121%TAB%-1%TAB%2~
@@ -180,6 +184,9 @@ COPY_EXISTING ~splprot.2da~ ~override~
 	READ_2DA_ENTRIES_NOW rows cols
 	FOR (row = 0; row < rows; ++row) BEGIN
 		READ_2DA_ENTRY_FORMER rows row 0 ~stat~
+		PATCH_IF ~%stat%~ STRING_EQUAL_CASE ~W7_KIT_EQ~ BEGIN
+			SET kit_eq = row
+		END
 		PATCH_IF ~%stat%~ STRING_EQUAL_CASE ~W7_CHR_LT~ BEGIN
 			SET chr_lt = row
 		END
@@ -221,41 +228,143 @@ OUTER_FOR (i = 0; i < 100; ++i) BEGIN
 	BUT_ONLY
 END
 
+//////////////////////////////////////////////////////
+//CREATE W7S@MR#K = KIT FILTER FOR MANA REGENERATION//
+//////////////////////////////////////////////////////
+
+LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MR#K~ END
+COPY_EXISTING ~W7S@MR#K.spl~ ~override~
+	LPF ADD_SPELL_HEADER INT_VAR target = 7 END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MR#C~ END
+BUT_ONLY
+
+/////////////////////////////////////////////
+//CREATE W7S@MRCL = CLEAR MANA REGENERATION//
+/////////////////////////////////////////////
+
+LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MRCL~ END
+COPY_EXISTING ~W7S@MRCL.spl~ ~override~
+	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 139 parameter1 = RESOLVE_STR_REF(~Clearing mana regeneration~) target = 1 timing = 1 resist_dispel = 2 header = 1 END
+BUT_ONLY
+
+////////////////////////////////////
+//BEGIN OF KIT SPECIFIC OPERATIONS//
+////////////////////////////////////
+
+OUTER_TEXT_SPRINT $kit_list(~GENERIC_KIT~) ~*~
+ACTION_PHP_EACH kit_list AS kit => n BEGIN
+	LAF GET_KIT_MANA STR_VAR kit_name = EVAL ~%kit%~ RET prefix base_mana chr_factor id END
+	ACTION_IF !(VARIABLE_IS_SET $mana_list(~%prefix%~ ~%base_mana%~ ~%chr_factor%~)) THEN BEGIN
+		OUTER_TEXT_SPRINT $mana_list(~%prefix%~ ~%base_mana%~ ~%chr_factor%~) ~%id%~
+	END ELSE BEGIN
+		OUTER_TEXT_SPRINT exid $mana_list(~%prefix%~ ~%base_mana%~ ~%chr_factor%~)
+		OUTER_TEXT_SPRINT $mana_list(~%prefix%~ ~%base_mana%~ ~%chr_factor%~) ~%exid% %id%~
+	END
+	
+	//////////////////////////////////////////////////////////////
+	//ADD EFFECTS TO W7S@MR#K = KIT FILTER FOR MANA REGENERATION//
+	//////////////////////////////////////////////////////////////
+	
+	ACTION_IF !(~%prefix%~ STRING_EQUAL ~@~) THEN BEGIN
+		COPY_EXISTING ~W7S@MR#K.spl~ ~override~
+			LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = id parameter2 = kit_eq target = 1 timing = 1 resist_dispel = 2 header = 1 insert_point = 0 STR_VAR resource = EVAL ~W7S%prefix%MR#C~ END
+			LPF ADD_SPELL_EFFECT INT_VAR opcode = 318 parameter1 = id parameter2 = kit_eq target = 1 timing = 0 duration = 0 resist_dispel = 2 header = 1 insert_point = 1 STR_VAR resource = ~W7S@MR#K~ END
+		BUT_ONLY
+	END
+END
+
+//////////////////////////////////////////
+//BEGIN OF MANA TYPE SPECIFIC OPERATIONS//
+//////////////////////////////////////////
+
+ACTION_PHP_EACH mana_list AS mana_type => ids BEGIN
+	OUTER_TEXT_SPRINT prefix ~%mana_type_0%~
+	OUTER_SET base_mana = mana_type_1
+	OUTER_SET chr_factor = mana_type_2
+	
+	/////////////////////////////////////////////////////
+	//ADD EFFECTS TO W7S@MRCL = CLEAR MANA REGENERATION//
+	/////////////////////////////////////////////////////
+	
+	COPY_EXISTING ~W7S@MRCL.spl~ ~override~
+		FOR (i = 13; i <= 25; ++i) BEGIN
+			LPF ADD_SPELL_EFFECT INT_VAR opcode = 321 parameter1 = 0 parameter2 = 0 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S%prefix%MR%i%~ END
+		END
+	BUT_ONLY
+
+	//////////////////////////////////////////////////////////////////////
+	//CREATE W7S?MR#C = KIT BASED CHARISMA FILTERS FOR MANA REGENERATION//
+	//////////////////////////////////////////////////////////////////////
+
+	LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = EVAL ~W7S%prefix%MR#C~ END
+	COPY_EXISTING ~W7S%prefix%MR#C.spl~ ~override~
+		LPF ADD_SPELL_HEADER INT_VAR target = 7 END
+		LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MRCL~ END	
+		FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
+			row = (i = 13) ? chr_lt : chr_eq
+			LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = i parameter2 = row target = 1 timing = 4 duration = 0 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S%prefix%MR%i%~ END
+		END
+	BUT_ONLY
+
+	////////////////////////////////////////////////////////////////////////////////////////////
+	//CREATE W7S?MR13 - W7S@MR25 = KIT AND CHARISMA BASED LEVEL FILTERS FOR MANA REGENRERATION//
+	////////////////////////////////////////////////////////////////////////////////////////////
+
+	OUTER_FOR (i = 13; i <= 25; ++i) BEGIN
+		LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = EVAL ~W7S%prefix%MR%i%~ END
+		COPY_EXISTING ~W7S%prefix%MR%i%.spl~ ~override~
+			FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
+				LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
+				LPF ADD_SPELL_EFFECT INT_VAR opcode = 139 parameter1 = RESOLVE_STR_REF(~Regeneration Cycle Restarted: %prefix%~) target = 1 timing = 1 resist_dispel = 2 header = j END
+				LPF CALCULATE_MANA INT_VAR base_mana = base_mana chr_factor = chr_factor charisma = i level = j RET mm = max_mana mr = mana_regen END
+				LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = (mm + 1) parameter2 = 2 target = 1 timing = 1 resist_dispel = 2 header = j STR_VAR resource = ~W7S@MM$$~ END
+				LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = (mm - 1) parameter2 = cm_lt target = 1 timing = 4 duration = mr resist_dispel = 2 header = j STR_VAR resource = EVAL ~W7S%prefix%MR#C~ END
+				LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 11 parameter2 = 2 target = 1 timing = 4 duration = mr resist_dispel = 2 header = j STR_VAR resource = ~W7S@CM&&~ END
+				LPF ADD_SPELL_EFFECT INT_VAR opcode = 318 parameter1 = 0 parameter2 = 0 target = 1 timing = 0 duration = (mr - 1) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MR#K~ END
+				LPF ADD_SPELL_EFFECT INT_VAR opcode = 318 parameter1 = 0 parameter2 = 0 target = 1 timing = 0 duration = (mr - 1) resist_dispel = 2 header = j STR_VAR resource = EVAL ~W7S%prefix%MR#C~ END
+				FOR (h = 1; h <= 8; ++h) BEGIN
+					LPF CALCULATE_MANA INT_VAR base_mana = base_mana chr_factor = chr_factor charisma = i level = j hours = h RET mh = mana_hours END
+					mh += 1
+					LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = mh parameter2 = 2 target = 1 timing = 4 duration = (300 * h) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MR&&~ END
+				END
+			END
+		BUT_ONLY
+	END
+END
+
 ///////////////////////////////////////////////////////////
-//CREATE W7S@MR## = CHARISMA FILTER FOR MANA REGENERATION//
+//CREATE W7S@MR&& = REST/TRAVEL MANA REGENERATION UTILITY//
 ///////////////////////////////////////////////////////////
 
-LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MR##~ END
-COPY_EXISTING ~W7S@MR##.spl~ ~override~
-	LPF ADD_SPELL_HEADER INT_VAR target = 7 END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 139 parameter1 = RESOLVE_STR_REF(~Regeneration Cycle Restarted~) target = 1 timing = 1 resist_dispel = 2 header = 1 END
-	FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 321 parameter1 = 0 parameter2 = 0 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MH%i%~ END
-	END
-	FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
-		row = (i = 13) ? chr_lt : chr_eq
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = i parameter2 = row target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MR%i%~ END
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = i parameter2 = row target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MH%i%~ END
+LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MR&&~ END
+COPY_EXISTING ~W7S@MR&&.spl~ ~override~
+	FOR (i = 1; i <= 100; ++i) BEGIN
+		h = i - 1
+		PATCH_PRINT ~Writing Spell W7S@MR&& - Ability %h%~
+		LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = i END
+		FOR (j = 99; j >= 0; --j) BEGIN // MAXIMUM MANA CAP 99
+			m = j + h
+			m = (m > 99) ? 99 : m
+			LPF PATCH_PADDING INT_VAR num = m RET mm = pad_num END
+			LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = j parameter2 = cm_eq target = 1 timing = 4 duration = 0 resist_dispel = 2 header = i STR_VAR resource = EVAL ~W7S@$$%mm%~ END
+		END
+		LPF ADD_SPELL_EFFECT INT_VAR opcode = 139 parameter1 = RESOLVE_STR_REF(~%h% mana points restored~) target = 1 timing = 4 duration = 0 resist_dispel = 2 header = i END
 	END
 BUT_ONLY
 
-////////////////////////////////////////////////////////////////////////////////////
-//CREATE W7S@MR13 - W7S@MR25 = CHARISMA BASED LEVEL FILTERS FOR MANA REGENRERATION//
-////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
+//CREATE W7S@CM## = DECREASE MANA BY SPELL LEVEL AND ACTIVATE MANA REGENERATION IF INACTIVE//
+/////////////////////////////////////////////////////////////////////////////////////////////
 
-OUTER_FOR (i = 13; i <= 25; ++i) BEGIN
-	LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = EVAL ~W7S@MR%i%~ END
-	COPY_EXISTING ~W7S@MR%i%.spl~ ~override~
-		FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
-			LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
-			LPF CALCULATE_MANA INT_VAR base_mana = 100 chr_factor = 6 charisma = i level = j reference = 1 RET mm = max_mana mr = mana_regen END
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = (mr - 1) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MM##~ END			
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = (mm - 1) parameter2 = cm_lt target = 1 timing = 4 duration = mr resist_dispel = 2 header = j STR_VAR resource = ~W7S@MR##~ END
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 11 parameter2 = 2 target = 1 timing = 4 duration = mr resist_dispel = 2 header = j STR_VAR resource = ~W7S@CM&&~ END
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 318 parameter1 = 0 parameter2 = 0 target = 1 timing = 0 duration = (mr - 1) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MR##~ END
-		END
-	BUT_ONLY
-END
+LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@CM##~ END
+COPY_EXISTING ~W7S@CM##.spl~ ~override~
+	FOR (i = 1; i <= 10; ++i) BEGIN
+		LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = i END
+		LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = i parameter2 = 2 target = 1 timing = 1 resist_dispel = 2 header = i STR_VAR resource = ~W7S@CM&&~ END
+		LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = i STR_VAR resource = ~W7S@MR#K~ END
+	END
+BUT_ONLY
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 //CREATE W7S@CM&& = CURRENT MANA MODIFICATION UTILITY: LEVELS 1 - 10 SUBTRACT LEVEL, LEVEL 11 ADDS 1//
@@ -322,116 +431,6 @@ OUTER_FOR (i = 0; i <= 99; ++i) BEGIN
 	BUT_ONLY
 END
 
-////////////////////////////////////////////////////////////////////////
-//CREATE W7S@MRCL = CLEAR MANA REGENERATION AFTER MAXIMUM MANA REACHED//
-////////////////////////////////////////////////////////////////////////
-
-LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MRCL~ END
-COPY_EXISTING ~W7S@MRCL.spl~ ~override~
-	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 139 parameter1 = RESOLVE_STR_REF(~Clearing mana regeneration~) target = 1 timing = 1 resist_dispel = 2 header = 1 END
-	FOR (i = 13; i <= 25; ++i) BEGIN
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 321 parameter1 = 0 parameter2 = 0 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MR%i%~ END
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 321 parameter1 = 0 parameter2 = 0 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MH%i%~ END
-	END
-BUT_ONLY
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-//CREATE W7S@CM## = DECREASE MANA BY SPELL LEVEL AND ACTIVATE MANA REGENERATION IF INACTIVE//
-/////////////////////////////////////////////////////////////////////////////////////////////
-
-LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@CM##~ END
-COPY_EXISTING ~W7S@CM##.spl~ ~override~
-	FOR (i = 1; i <= 10; ++i) BEGIN
-		LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = i END
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = i parameter2 = 2 target = 1 timing = 1 resist_dispel = 2 header = i STR_VAR resource = ~W7S@CM&&~ END
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = i STR_VAR resource = ~W7S@MR##~ END
-	END
-BUT_ONLY
-
-///////////////////////////////////////////////////////////////////////
-//CREATE W7S@MH## = CHARISMA FILTER FOR REST/TRAVEL MANA REGENERATION//
-///////////////////////////////////////////////////////////////////////
-
-LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MH##~ END
-COPY_EXISTING ~W7S@MH##.spl~ ~override~
-	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
-	FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 321 parameter1 = 0 parameter2 = 0 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MH%i%~ END
-	END
-	FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
-		row = (i = 13) ? chr_lt : chr_eq
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = i parameter2 = row target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MH%i%~ END
-	END
-BUT_ONLY
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-//CREATE W7S@MH13 - W7S@MH25 = CHARISMA BASED LEVEL FILTERS FOR REST/TRAVEL MANA REGENERATION//
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-OUTER_FOR (i = 13; i <= 25; ++i) BEGIN
-	LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = EVAL ~W7S@MH%i%~ END
-	COPY_EXISTING ~W7S@MH%i%.spl~ ~override~
-		FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
-			LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
-			FOR (h = 1; h <= 8; ++h) BEGIN
-				LPF CALCULATE_MANA INT_VAR base_mana = 100 chr_factor = 6 charisma = i level = j hours = h RET m = mana_hours END
-				m += 1
-				LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = m parameter2 = 2 target = 1 timing = 4 duration = (300 * h) resist_dispel = 2 header = j STR_VAR resource = ~W7S@MH&&~ END
-			END
-		END
-	BUT_ONLY
-END
-
-///////////////////////////////////////////////////////////
-//CREATE W7S@MH&& = REST/TRAVEL MANA REGENERATION UTILITY//
-///////////////////////////////////////////////////////////
-
-LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MH&&~ END
-COPY_EXISTING ~W7S@MH&&.spl~ ~override~
-	FOR (i = 1; i <= 100; ++i) BEGIN
-		h = i - 1
-		PATCH_PRINT ~Writing Spell W7S@MH&& - Ability %h%~
-		LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = i END
-		FOR (j = 99; j >= 0; --j) BEGIN // MAXIMUM MANA CAP 99
-			m = j + h
-			m = (m > 99) ? 99 : m
-			LPF PATCH_PADDING INT_VAR num = m RET mm = pad_num END
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = j parameter2 = cm_eq target = 1 timing = 4 duration = 0 resist_dispel = 2 header = i STR_VAR resource = EVAL ~W7S@$$%mm%~ END
-		END
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 139 parameter1 = RESOLVE_STR_REF(~%h% mana points restored~) target = 1 timing = 4 duration = 0 resist_dispel = 2 header = i END
-	END
-BUT_ONLY
-
-//////////////////////////////////////////////////
-//CREATE W7S@MM## = CHARISMA FILTER FOR MAX MANA//
-//////////////////////////////////////////////////
-
-LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@MM##~ END
-COPY_EXISTING ~W7S@MM##.spl~ ~override~
-	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
-	FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
-		row = (i = 13) ? chr_lt : chr_eq
-		LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = i parameter2 = row target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@MM%i%~ END
-	END
-BUT_ONLY
-
-//////////////////////////////////////////////////////////////////////////
-//CREATE W7S@MM13 - W7S@MM25 = CHARISMA BASED LEVEL FILTERS FOR MAX MANA//
-//////////////////////////////////////////////////////////////////////////
-
-OUTER_FOR (i = 13; i <= 25; ++i) BEGIN //CHARISMA 13 to 25
-	LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = EVAL ~W7S@MM%i%~ END
-	COPY_EXISTING ~W7S@MM%i%.spl~ ~override~
-		FOR (j = 1; j <= 50; ++j) BEGIN //LEVEL CAP 50
-			LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = j END
-			LPF CALCULATE_MANA INT_VAR base_mana = 100 chr_factor = 6 charisma = i level = j RET mm = max_mana END
-			LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = (mm + 1) parameter2 = 2 target = 1 timing = 1 resist_dispel = 2 header = j STR_VAR resource = ~W7S@MM$$~ END
-		END
-	BUT_ONLY
-END
-
 /////////////////////////////////////////
 //CREATE W7S@MM$$ = MAX MANA A$$IGNMENT//
 /////////////////////////////////////////
@@ -460,7 +459,7 @@ BUT_ONLY
 LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@IN##~ END
 COPY_EXISTING ~W7S@IN##.spl~ ~override~
 	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = 19 parameter2 = 105 target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@IN&&~ END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = 19 parameter2 = 105 target = 1 timing = 4 duration = 0 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@IN&&~ END
 BUT_ONLY
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -470,11 +469,26 @@ BUT_ONLY
 LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@IN&&~ END
 COPY_EXISTING ~W7S@IN&&.spl~ ~override~
 	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MM##~ END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = 0 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@$$99~ END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MR#K~ END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@$$99~ END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 326 parameter1 = 0x4023 parameter2 = kit_eq target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@SPSL~ END
 	PHP_EACH hla_spells AS spl => n BEGIN
 		LPF PATCH_PADDING INT_VAR num = n RET nn = pad_num END
 		LPF ADD_SPELL_EFFECT INT_VAR opcode = 206 parameter1 = (0 - 1) parameter2 = 0 target = 1 timing = 9 resist_dispel = 2 header = 1 STR_VAR resource = EVAL ~W7S@GH%nn%~ END
+	END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 338 parameter1 = 10309 parameter2 = 0 target = 1 timing = 0 duration = 1 resist_dispel = 2 header = 1 END
+BUT_ONLY
+
+////////////////////////////////////////////////////////
+//CREATE W7S@SPSL = REDUCE DRAGON DISCIPLE SPELL SLOTS//
+////////////////////////////////////////////////////////
+
+LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@SPSL~ END
+COPY_EXISTING ~W7S@SPSL.spl~ ~override~
+	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
+	FOR (i = 0; i < 9; ++i) BEGIN
+		l = 2 ** i
+		LPF ADD_SPELL_EFFECT INT_VAR opcode = 42 parameter1 = (0 - 1) parameter2 = l target = 1 timing = 9 resist_dispel = 2 header = 1 END
 	END
 BUT_ONLY
 
@@ -496,9 +510,9 @@ BUT_ONLY
 LAF CREATE_SPELL INT_VAR level = 0 flags = ignall_flag STR_VAR spell = ~W7S@LV&&~ END
 COPY_EXISTING ~W7S@LV&&.spl~ ~override~
 	LPF ADD_SPELL_HEADER INT_VAR target = 7 required_level = 1 END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MM##~ END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MH##~ END
-	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MR##~ END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MRCL~ END	
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 146 parameter1 = 0 parameter2 = 1 target = 1 timing = 4 duration = 1 resist_dispel = 2 header = 1 STR_VAR resource = ~W7S@MR#K~ END
+	LPF ADD_SPELL_EFFECT INT_VAR opcode = 338 parameter1 = 10309 parameter2 = 0 target = 1 timing = 0 duration = 1 resist_dispel = 2 header = 1 END
 BUT_ONLY
 
 ////////////////////////////////////////////////////////////////////////////////

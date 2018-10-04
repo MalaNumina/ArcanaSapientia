@@ -13,12 +13,12 @@ BEGIN
 <<<<<<<<...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_KITMANA.2DA
 2DA V1.0
 ****
- KIT_NAME PREFIX BASE_MANA CHARISMA_FACTOR ID
+ KIT_NAME PREFIX BASE_MANA CHARISMA_FACTOR
 >>>>>>>>
 	ACTION_IF !(FILE_EXISTS ~override/W7KITMANA.2DA~) THEN BEGIN
 		COPY ~...inlined/W7/arcana_sapientia/sorcerer_mana/DUMMY_KITMANA.2DA~ ~override/W7KITMANA.2DA~
-		APPEND ~W7KITMANA.2DA~ ~0 GENERIC_KIT @ 50 6 *~
-		APPEND ~W7KITMANA.2DA~ ~1 SORCERER _ 100 6 0x00004000~
+		APPEND ~W7KITMANA.2DA~ ~0 GENERIC_KIT @ 50 6~
+		APPEND ~W7KITMANA.2DA~ ~1 SORCERER _ 100 6~
 		COPY_EXISTING ~W7KITMANA.2DA~ ~override~
 			PRETTY_PRINT_2DA
 		BUT_ONLY
@@ -73,34 +73,74 @@ DEFINE_ACTION_FUNCTION ~ADD_KIT_MANA~
 		kit_name = ~~
 		prefix = ~*~
 BEGIN
-	COPY_EXISTING ~KITLIST.2DA~ ~override~
+	LAF INITIALIZE_KIT_MANA END
+	OUTER_SET insert = 1
+	COPY_EXISTING ~W7KITMANA.2DA~ ~override~
 		COUNT_2DA_COLS cols
 		READ_2DA_ENTRIES_NOW rows cols
 		FOR (row = 0; row < rows; row += 1) BEGIN
-			READ_2DA_ENTRY_FORMER rows row 1 kname
-			PATCH_IF (~%kname%~ STRING_EQUAL_CASE ~%kit_name%~) BEGIN
-				READ_2DA_ENTRY_FORMER rows row 8 cnum
-				PATCH_IF IS_AN_INT cnum BEGIN
-					PATCH_IF (cnum = 19) BEGIN
-						READ_2DA_ENTRY_FORMER rows row 9 kit_id
-					END
+			READ_2DA_ENTRY_FORMER rows row 1 name
+			READ_2DA_ENTRY_FORMER rows row 2 prfx
+			READ_2DA_ENTRY_FORMER rows row 3 bmn
+			READ_2DA_ENTRY_FORMER rows row 4 chrf
+			TEXT_SPRINT $ex_names(~%name%~) ~Prefix = %prfx% Base Mana = %bmn% Charisma Factor = %chrf%~
+			TEXT_SPRINT $ex_manas(~%name%~ ~%bmn%~ ~%chrf%~) ~%prfx%~
+			TEXT_SPRINT $ex_rows(~%name%~) ~%row%~
+			TEXT_SPRINT $ex_prfx(~%prfx%~) ~%row%~
+			TEXT_SPRINT $ex_parms(~%bmn%~ ~%chrf%~) ~%prfx%~
+			PATCH_IF (row = 0) THEN BEGIN
+				PATCH_IF (base_mana = bmn) AND (chr_factor = chrf) THEN BEGIN
+					insert = 0
+					row = rows
 				END
 			END
-		END		
+		END
 	BUT_ONLY
-	ACTION_IF (VARIABLE_IS_SET kit_id) THEN BEGIN
-		LAF INITIALIZE_KIT_MANA END
-		COPY_EXISTING ~W7KITMANA.2DA~ ~override~
-			COUNT_2DA_COLS cols
-			READ_2DA_ENTRIES_NOW rows cols
-			FOR (row = 0; row < rows; row += 1) BEGIN
-				READ_2DA_ENTRY_FORMER rows row 2 prfx
-				READ_2DA_ENTRY_FORMER rows row 3 bmn
-				READ_2DA_ENTRY_FORMER rows row 4 chrf
-				TEXT_SPRINT $ex_prfx(~%prfx%~) ~%row%~
-				TEXT_SPRINT $ex_parms(~%bmn%~ ~%chrf%~) ~%prfx%~
+	ACTION_IF (insert = 1) THEN BEGIN
+		ACTION_IF (VARIABLE_IS_SET $ex_names(~%kit_name%~)) THEN BEGIN
+			ACTION_IF !(VARIABLE_IS_SET $ex_manas(~%kit_name%~ ~%base_mana%~ ~%chr_factor%~)) THEN BEGIN
+				OUTER_TEXT_SPRINT version $ex_names(~%kit_name%~)
+				OUTER_SET rp = 1
+				OUTER_WHILE rp BEGIN
+					PRINT ~%kit_name% already existing in W7KITMANA:
+[K]eep existing: %version%
+[R]eplace with: Prefix = %prefix% Base Mana = %base_mana% Charisma Factor = %chr_factor%~
+					ACTION_READLN key
+					ACTION_MATCH ~%key%~
+					WITH
+						~k~ BEGIN
+							OUTER_SET insert = 0
+							OUTER_SET rp = 0
+						END
+						~r~ BEGIN
+							COPY_EXISTING ~W7KITMANA.2DA~ ~override~
+								TEXT_SPRINT row $ex_rows(~%kit_name%~)
+								REMOVE_2DA_ROW row cols
+								PATCH_CLEAR_ARRAY ex_prfx
+								PATCH_CLEAR_ARRAY ex_parms
+								READ_2DA_ENTRIES_NOW rows cols
+								FOR (row = 0; row < rows; row += 1) BEGIN
+									SET_2DA_ENTRY row 0 cols ~%row%~
+									READ_2DA_ENTRY_FORMER rows row 2 prfx
+									READ_2DA_ENTRY_FORMER rows row 3 bmn
+									READ_2DA_ENTRY_FORMER rows row 4 chrf
+									TEXT_SPRINT $ex_prfx(~%prfx%~) ~%row%~
+									TEXT_SPRINT $ex_parms(~%bmn%~ ~%chrf%~) ~%prfx%~
+								END
+							BUT_ONLY
+							OUTER_SET rp = 0
+						END
+						DEFAULT
+					END
+				END
+			END ELSE BEGIN
+				OUTER_TEXT_SPRINT prefix $ex_manas(~%kit_name%~ ~%base_mana%~ ~%chr_factor%~)
+				PRINT ~W7KITMANA already contains the given mana parameters: using %prefix% prefix for %kit_name%!~
+				OUTER_SET insert = 0
 			END
-		BUT_ONLY
+		END
+	END
+	ACTION_IF (insert = 1) THEN BEGIN
 		ACTION_IF (VARIABLE_IS_SET $ex_parms(~%base_mana%~ ~%chr_factor%~)) THEN BEGIN
 			OUTER_TEXT_SPRINT prefix $ex_parms(~%base_mana%~ ~%chr_factor%~)
 			PRINT ~W7KITMANA already contains the given mana parameters: using %prefix% prefix for %kit_name%!~
@@ -146,13 +186,11 @@ BEGIN
 				END
 			END
 		END
-		APPEND ~W7KITMANA.2DA~ ~%rows% %kit_name% %prefix% %base_mana% %chr_factor% %kit_id%~
+		APPEND ~W7KITMANA.2DA~ ~%rows% %kit_name% %prefix% %base_mana% %chr_factor%~
 		LAF CREATE_MANA_REFERENCE INT_VAR type = rows END
 		COPY_EXISTING ~W7KITMANA.2DA~ ~override~
 			PRETTY_PRINT_2DA
 		BUT_ONLY
-	END ELSE BEGIN
-		WARN ~%kit_name% not found in Sorcerer kit list!~
 	END
 END
 
@@ -211,7 +249,7 @@ END
 //////////////////////////////////////////////////////////////
 
 DEFINE_ACTION_FUNCTION ~GET_KIT_MANA~
-	INT_VAR
+	STR_VAR
 		kit_name = ~SORCERER~
 	RET
 		prefix
@@ -220,17 +258,17 @@ DEFINE_ACTION_FUNCTION ~GET_KIT_MANA~
 		id
 BEGIN
 	LAF INITIALIZE_KIT_MANA END
+	OUTER_SET found = 0
+	OUTER_TEXT_SPRINT id ~*~
 	COPY_EXISTING ~W7KITMANA.2DA~ ~override~
 		COUNT_2DA_COLS cols
 		READ_2DA_ENTRIES_NOW rows cols
-		found = 0
 		FOR (row = 0; row < rows; row += 1) BEGIN
 			READ_2DA_ENTRY_FORMER rows row 1 name
 			PATCH_IF (~%name%~ STRING_EQUAL_CASE ~%kit_name%~) THEN BEGIN
 				READ_2DA_ENTRY_FORMER rows row 2 prefix
 				READ_2DA_ENTRY_FORMER rows row 3 base_mana
 				READ_2DA_ENTRY_FORMER rows row 4 chr_factor
-				READ_2DA_ENTRY_FORMER rows row 5 id
 				found = 1
 				row = rows
 			END
@@ -239,9 +277,28 @@ BEGIN
 			READ_2DA_ENTRY_FORMER rows 0 2 prefix
 			READ_2DA_ENTRY_FORMER rows 0 3 base_mana
 			READ_2DA_ENTRY_FORMER rows 0 4 chr_factor
-			READ_2DA_ENTRY_FORMER rows 0 5 id
 		END
 	BUT_ONLY
+	ACTION_IF (~%kit_name%~ STRING_EQUAL_CASE ~SORCERER~) THEN BEGIN
+		OUTER_TEXT_SPRINT id ~0x00004000~
+	END ELSE BEGIN
+		COPY_EXISTING ~KITLIST.2DA~ ~override~
+			COUNT_2DA_COLS cols
+			READ_2DA_ENTRIES_NOW rows cols
+			FOR (row = 0; row < rows; row += 1) BEGIN
+				READ_2DA_ENTRY_FORMER rows row 1 kname
+				PATCH_IF (~%kname%~ STRING_EQUAL_CASE ~%kit_name%~) BEGIN
+					READ_2DA_ENTRY_FORMER rows row 8 cnum
+					PATCH_IF IS_AN_INT cnum BEGIN
+						PATCH_IF (cnum = 19) BEGIN
+							READ_2DA_ENTRY_FORMER rows row 9 id
+							row = rows
+						END
+					END
+				END
+			END
+		BUT_ONLY
+	END
 END
 
 DEFINE_ACTION_FUNCTION ~GET_MANA_TYPES~
