@@ -408,8 +408,21 @@ BEGIN
 	OUTER_FOR (i = 0; i < ga_len; ++i) BEGIN
 		OUTER_TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
 		COPY_EXISTING ~%hla%.SPL~ ~override~
+			add = 0
 			READ_SHORT 0x1c type
-			PATCH_IF ~%type%~ STRING_EQUAL_CASE ~%ctype%~ THEN BEGIN
+			PATCH_IF (type = ctype) THEN BEGIN
+				add = 1
+			END ELSE BEGIN
+				PATCH_IF (type = 4) THEN BEGIN
+					READ_LONG 0x64 off
+					off += 0x02
+					READ_SHORT off loc
+					PATCH_IF (loc = 2) THEN BEGIN
+						add = 1
+					END
+				END
+			END
+			PATCH_IF (add = 1) THEN BEGIN
 				TEXT_SPRINT $hla_spells(~%hla%~) ~%hla_spells_len%~
 				hla_spells_len += 1
 			END
@@ -420,6 +433,167 @@ BEGIN
 	END
 	ACTION_IF (hla_spells_len = 0) THEN BEGIN
 		OUTER_TEXT_SPRINT $hla_spells(~*~) ~*~
+	END
+END
+
+/////////////////////////////
+// SELECT_SPELLS_BY_EFFECT //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																														//
+//	Returns an array containing every spell having at least one effect matching the given parameters. All the provided	//
+//	parameters must match, while not provided parameters are ignored. Both ability effects and casting features are		//
+//	taken into consideration.																							//
+//																														//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~SELECT_SPELLS_BY_EFFECT~
+	INT_VAR
+		opcode = (0 - 1)
+		target = (0 - 1)
+		power = (0 - 1)
+		parameter1 = (0 - 1)
+		parameter2 = (0 - 1)
+		parameter2_0 = (0 - 1)
+		parameter2_1 = (0 - 1)
+		timing = (0 - 1)
+		resist_dispel = (0 - 1)
+		duration = (0 - 1)
+		probability1 = (0 - 1)
+		probability2 = (0 - 1)
+		dicenumber = (0 - 1)
+		dicesize = (0 - 1)
+		savingthrow = (0 - 1)
+		savebounus = (0 - 11)
+		special = (0 - 1)
+	STR_VAR
+		resource = ~*~
+	RET
+		match_count
+	RET_ARRAY
+		match_spells
+BEGIN
+	OUTER_SET match_count = 0
+	COPY_EXISTING_REGEXP GLOB ~.*\.spl~ ~override~
+		READ_LONG 0x6a eo
+		FOR (i = eo; i < SOURCE_SIZE; i += 0x30) BEGIN
+			add = 1
+			PATCH_IF (opcode != (0 - 1)) THEN BEGIN
+				READ_SHORT i par
+				PATCH_IF (opcode != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (target != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x02 par
+				PATCH_IF (target != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (power != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x03 par
+				PATCH_IF (power != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter1 != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x04 par
+				PATCH_IF (parameter1 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter2 != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x08 par
+				PATCH_IF (parameter2 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter2_0 != (0 - 1)) THEN BEGIN
+				READ_SHORT i + 0x08 par
+				PATCH_IF (parameter2_0 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter2_1 != (0 - 1)) THEN BEGIN
+				READ_SHORT i + 0x0a par
+				PATCH_IF (parameter2_1 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (timing != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x0c par
+				PATCH_IF (timing != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (resist_dispel != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x0d par
+				PATCH_IF (resist_dispel != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (duration != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x0e par
+				PATCH_IF (duration != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (probability1 != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x12 par
+				PATCH_IF (probability1 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (probability2 != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x13 par
+				PATCH_IF (probability2 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF !(~%resource%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+				READ_ASCII i + 0x14 par (8)
+				PATCH_IF !(~%resource%~ STRING_EQUAL_CASE ~%par%~) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (dicenumber != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x1c par
+				PATCH_IF (dicenumber != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (dicesize != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x20 par
+				PATCH_IF (dicesize != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (savingthrow != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x24 par
+				PATCH_IF (savingthrow != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (savebounus != (0 - 11)) THEN BEGIN
+				READ_LONG i + 0x28 par
+				PATCH_IF (savebounus != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (special != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x2c par
+				PATCH_IF (special != par) THEN BEGIN
+					add = 0
+				END
+			END			
+			PATCH_IF (add = 1) THEN BEGIN
+				TEXT_SPRINT $match_spells(~%SOURCE_FILE%~) ~~
+				match_count += 1
+				i = SOURCE_SIZE
+			END
+		END
+	BUT_ONLY
+	ACTION_IF (match_count = 0) THEN BEGIN
+		OUTER_TEXT_SPRINT $match_spells(~*~) ~*~
 	END
 END
 
@@ -610,6 +784,62 @@ BEGIN
 		TEXT_SPRINT f $bits(~%j%~)
 		TEXT_SPRINT $flags(~%i%~) ~%f%~
 	END
+END
+
+/////////////////////
+// ADD_SPELL_STATE //
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//																									//
+//	Adds a new spell state to SPLSTATE.IDS named as state parameter, at the first available index.	//
+//	If type parameter is equal to 1, only odd indices are taken into consideration, while if type	//
+//	parameter is equal to 2, only even indices are taken into consideration.						//
+//																									//
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~ADD_SPELL_STATE~
+	INT_VAR
+		type = 0
+	STR_VAR
+		state = ~*~
+	RET
+		index
+BEGIN
+	COPY_EXISTING ~splstate.ids~ ~override~
+		lind = (0 - 1)
+		insrow = (0 - 1)
+		index = (0 - 1)
+		COUNT_2DA_COLS cols
+		READ_2DA_ENTRIES_NOW rows cols
+		FOR (row = 0; row < rows; ++row) BEGIN
+			lind += 1
+			READ_2DA_ENTRY_FORMER rows row 0 ind
+			PATCH_IF (ind != lind ) THEN BEGIN
+				ins = 1
+				PATCH_IF (type = 1) THEN BEGIN
+					PATCH_IF !(lind BAND 1 = 1) THEN BEGIN
+						ins = 0
+					END
+				END
+				PATCH_IF (type = 2) THEN BEGIN
+					PATCH_IF (lind BAND 1 = 1) THEN BEGIN
+						ins = 0
+					END
+				END
+				PATCH_IF (ins = 1) THEN BEGIN
+					insrow = row
+					index = lind
+					row = rows
+				END ELSE BEGIN
+					--row
+				END
+			END
+		END
+		PATCH_IF (insrow != (0 - 1)) THEN BEGIN
+			INSERT_2DA_ROW insrow cols ~%index% %state%~
+		END ELSE BEGIN
+			PATCH_WARN ~Impossible to add %state%: SPLSTATE is already full!~
+		END
+	BUT_ONLY
 END
 
 

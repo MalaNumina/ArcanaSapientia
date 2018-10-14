@@ -10,6 +10,7 @@ INCLUDE ~%MOD_FOLDER%/lib/W7_lib_utility.tpa~
 INCLUDE ~%MOD_FOLDER%/lib/W7_lib_class.tpa~
 INCLUDE ~%MOD_FOLDER%/lib/W7_lib_hla.tpa~
 INCLUDE ~%MOD_FOLDER%/lib/W7_lib_spell.tpa~
+INCLUDE ~%MOD_FOLDER%/lib/W7_lib_item.tpa~
 
 <<<<<<<<...inlined/W7/%MOD_FOLDER%/DUMMY_DETECTION.W7
 >>>>>>>>

@@ -8,60 +8,24 @@ COPY ~...inlined/W7/%MOD_FOLDER%/DUMMY_DETECTION.W7~ ~override/innate_hlas.W7~
 //CREATE HLA ARCANE SPELLS ARRAY//
 //////////////////////////////////
 
-LAF LIST_CLASS_HLAS STR_VAR class_name = ~MAGE~ RET ga_len RET_ARRAY hla_list END
-OUTER_SET len = 0
-OUTER_FOR (i = 0; i < ga_len; ++i) BEGIN
-	OUTER_TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
-	PRINT ~%hla%~
-	ACTION_IF !(~%hla%~ STRING_MATCHES_REGEXP ~SPWI[1-9]\(\([0-4][1-9]\)\|10\|20\|30\|40\|50\)~) THEN BEGIN
-		OUTER_TEXT_SPRINT $hla_spells(~%hla%~) ~%len%~
-		OUTER_SET len += 1
-	END
-END
-ACTION_CLEAR_ARRAY hla_list
-LAF LIST_CLASS_HLAS STR_VAR class_name = ~SORCERER~ RET ga_len RET_ARRAY hla_list END
-OUTER_FOR (i = 0; i < ga_len; ++i) BEGIN
-	OUTER_TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
-	ACTION_IF !(~%hla%~ STRING_MATCHES_REGEXP ~SPWI[1-9]\(\([0-4][1-9]\)\|10\|20\|30\|40\|50\)~) THEN BEGIN
-		ACTION_IF !(VARIABLE_IS_SET $hla_spells(~%hla%~)) THEN BEGIN
-			OUTER_TEXT_SPRINT $hla_spells(~%hla%~) ~%len%~
-			OUTER_SET len += 1
-		END
-	END
-END
-ACTION_CLEAR_ARRAY hla_list
-OUTER_SET found_in_bard = 0
-LAF LIST_CLASS_HLAS STR_VAR class_name = ~BARD~ RET ga_len RET_ARRAY hla_list END
-OUTER_FOR (i = 0; i < ga_len; ++i) BEGIN
-	OUTER_TEXT_SPRINT hla $hla_list(~GA~ ~%i%~)
-	ACTION_IF !(~%hla%~ STRING_MATCHES_REGEXP ~SPWI[1-9]\(\([0-4][1-9]\)\|10\|20\|30\|40\|50\)~) THEN BEGIN
-		ACTION_IF !(VARIABLE_IS_SET $hla_spells(~%hla%~)) THEN BEGIN
-			OUTER_TEXT_SPRINT $hla_spells(~%hla%~) ~%len%~
-			OUTER_SET len += 1
-		END
-		OUTER_SET found_in_bard = 1
-	END
-END
-ACTION_CLEAR_ARRAY hla_list
+LAF LIST_SPELLS STR_VAR class_name = ~MAGE~ RET_ARRAY hla_spells END
+LAF LIST_SPELLS STR_VAR class_name = ~SORCERER~ RET_ARRAY hla_spells END
+LAF LIST_SPELLS STR_VAR class_name = ~BARD~ RET_ARRAY hla_spells END
 
 ACTION_PHP_EACH hla_spells AS spl => id BEGIN
-	LAF POPULATE_HLA_ARRAY STR_VAR ability = EVAL ~%spl%~ num_allowed = ~16~ END
-	COPY_EXISTING ~%spl%.SPL~ ~override~
-		WRITE_SHORT 0x1c 4
-		WRITE_LONG  0x34 10
-	BUT_ONLY
-END
-ACTION_IF (found_in_bard = 1) THEN BEGIN
-	LAF EDIT_CLASS_HLAS INT_VAR clear = 0 STR_VAR class_name = ~BARD~ END
+	ACTION_IF !(~%spl%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+		PRINT ~%spl% = %id%~
+		LAF POPULATE_HLA_ARRAY STR_VAR ability = EVAL ~%spl%~ num_allowed = ~16~ END
+		COPY_EXISTING ~%spl%.SPL~ ~override~
+			WRITE_SHORT 0x1c 4
+			WRITE_LONG  0x34 10
+		BUT_ONLY
+	END
 END
 LAF EDIT_CLASS_HLAS INT_VAR clear = 0 STR_VAR class_name = ~MAGE~ END
-LAF EDIT_CLASS_HLAS INT_VAR clear = 1 STR_VAR class_name = ~SORCERER~ END
+LAF EDIT_CLASS_HLAS INT_VAR clear = 0 STR_VAR class_name = ~SORCERER~ END
+LAF EDIT_CLASS_HLAS INT_VAR clear = 1 STR_VAR class_name = ~BARD~ END
 
 ACTION_CLEAR_ARRAY hla_spells
-
-
-
-
-
 
 

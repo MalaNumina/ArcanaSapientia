@@ -1,0 +1,500 @@
+////////////////////////
+// REQUIRED LIBRARIES //
+//////////////////////////////////////////////////////////
+//														//
+// For this library to work you need also to include:	//
+//														//
+//	W7_lib_3rd											//
+//														//
+//////////////////////////////////////////////////////////
+
+/////////////////
+// CREATE_ITEM //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																															//
+//	Creates a new item named as item parameter. If a source parameter is provided, the item referenced in that parameter	//
+//	is taken as a starting point (only the main header is cloned, while abilities and effects are ignored), but every 		//
+//	provided parameter will replace the corrispondig value in the source item.												//
+//																															//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~CREATE_ITEM~
+	INT_VAR
+		name = ~-1~
+		name_i = ~-1~
+		flags = ~-1~
+		type = ~-1~
+		unusable_by = ~-1~
+		animation = ~-1~
+		min_lvl = ~-1~
+		min_str = ~-1~
+		min_bstr = ~-1~
+		kit_usb1 = ~-1~
+		min_int = ~-1~
+		kit_usb2 = ~-1~
+		min_dex = ~-1~
+		kit_usb3 = ~-1~
+		min_wis = ~-1~
+		kit_usb4 = ~-1~
+		min_con = ~-1~
+		proficency = ~-1~
+		min_cha = ~-1~
+		price = ~-1~
+		stack = ~-1~
+		lore = ~-1~
+		weight = ~-1~
+		description = ~-1~
+		description_i = ~-1~
+		enchantment = ~-1~
+	STR_VAR
+		source = ~*~
+		item = ~W7DUMMYITM~
+		used = ~*~
+		icon = ~*~
+		ground_icon = ~*~
+		description_icon = ~*~
+BEGIN
+<<<<<<<<...inlined/W7/lib/DUMMY_ITEM.ITM
+>>>>>>>>
+	ACTION_IF !(~%source%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+		COPY_EXISTING ~%source%.ITM~ ~override~
+			PATCH_IF (name = ~-1~) THEN BEGIN READ_LONG NAME1 name END
+			PATCH_IF (name_i = ~-1~) THEN BEGIN READ_LONG NAME2 name_i END
+			PATCH_IF (~%used%~ STRING_EQUAL_CASE ~*~) THEN BEGIN READ_ASCII 0x10 used (8) END
+			PATCH_IF (flags = ~-1~) THEN BEGIN READ_LONG 0x18 flags END
+			PATCH_IF (type = ~-1~) THEN BEGIN READ_SHORT 0x1c type END
+			PATCH_IF (unusable_by = ~-1~) THEN BEGIN READ_LONG 0x1e unusable_by END
+			PATCH_IF (animation = ~-1~) THEN BEGIN READ_SHORT 0x22 animation END
+			PATCH_IF (min_lvl = ~-1~) THEN BEGIN READ_SHORT 0x24 min_lvl END
+			PATCH_IF (min_str = ~-1~) THEN BEGIN READ_SHORT 0x26 min_str END
+			PATCH_IF (min_bstr = ~-1~) THEN BEGIN READ_BYTE 0x28 min_bstr END
+			PATCH_IF (kit_usb1 = ~-1~) THEN BEGIN READ_BYTE 0x29 kit_usb1 END
+			PATCH_IF (min_int = ~-1~) THEN BEGIN READ_BYTE 0x2a min_int END
+			PATCH_IF (kit_usb2 = ~-1~) THEN BEGIN READ_BYTE 0x2b kit_usb2 END
+			PATCH_IF (min_dex = ~-1~) THEN BEGIN READ_BYTE 0x2c min_dex END
+			PATCH_IF (kit_usb3 = ~-1~) THEN BEGIN READ_BYTE 0x2d kit_usb3 END
+			PATCH_IF (min_wis = ~-1~) THEN BEGIN READ_BYTE 0x2e min_wis END
+			PATCH_IF (kit_usb4 = ~-1~) THEN BEGIN READ_BYTE 0x2f kit_usb4 END
+			PATCH_IF (min_con = ~-1~) THEN BEGIN READ_BYTE 0x30 min_con END
+			PATCH_IF (proficency = ~-1~) THEN BEGIN READ_BYTE 0x31 proficency END
+			PATCH_IF (min_cha = ~-1~) THEN BEGIN READ_SHORT 0x32 min_cha END
+			PATCH_IF (price = ~-1~) THEN BEGIN READ_LONG 0x34 price END
+			PATCH_IF (stack = ~-1~) THEN BEGIN READ_SHORT 0x38 stack END
+			PATCH_IF (~%icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN READ_ASCII 0x3a icon (8) END
+			PATCH_IF (lore = ~-1~) THEN BEGIN READ_SHORT 0x42 lore END
+			PATCH_IF (~%ground_icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN READ_ASCII 0x44 ground_icon (8) END
+			PATCH_IF (weight = ~-1~) THEN BEGIN READ_LONG 0x4c weight END
+			PATCH_IF (description = ~-1~) THEN BEGIN READ_LONG UNIDENTIFIED_DESC description END
+			PATCH_IF (description_i = ~-1~) THEN BEGIN READ_LONG IDENTIFIED_DESC description_i END
+			PATCH_IF (~%description_icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN READ_ASCII 0x58 description_icon (8) END
+			PATCH_IF (enchantment = ~-1~) THEN BEGIN READ_LONG 0x60 enchantment END
+		BUT_ONLY
+	END ELSE BEGIN
+		ACTION_IF (~%used%~ STRING_EQUAL_CASE ~*~) THEN BEGIN OUTER_TEXT_SPRINT used ~~ END
+		ACTION_IF (flags = ~-1~) THEN BEGIN OUTER_SET flags = 0 END
+		ACTION_IF (type = ~-1~) THEN BEGIN OUTER_SET type = 0 END
+		ACTION_IF (unusable_by = ~-1~) THEN BEGIN OUTER_SET unusable_by = 0 END
+		ACTION_IF (animation = ~-1~) THEN BEGIN OUTER_SET animation = 0x2020 END
+		ACTION_IF (min_lvl = ~-1~) THEN BEGIN OUTER_SET min_lvl = 0 END
+		ACTION_IF (min_str = ~-1~) THEN BEGIN OUTER_SET min_str = 0 END
+		ACTION_IF (min_bstr = ~-1~) THEN BEGIN OUTER_SET min_bstr = 0 END
+		ACTION_IF (kit_usb1 = ~-1~) THEN BEGIN OUTER_SET kit_usb1 = 0 END
+		ACTION_IF (min_int = ~-1~) THEN BEGIN OUTER_SET min_int = 0 END
+		ACTION_IF (kit_usb2 = ~-1~) THEN BEGIN OUTER_SET kit_usb2 = 0 END
+		ACTION_IF (min_dex = ~-1~) THEN BEGIN OUTER_SET min_dex = 0 END
+		ACTION_IF (kit_usb3 = ~-1~) THEN BEGIN OUTER_SET kit_usb3 = 0 END
+		ACTION_IF (min_wis = ~-1~) THEN BEGIN OUTER_SET min_wis = 0 END
+		ACTION_IF (kit_usb4 = ~-1~) THEN BEGIN OUTER_SET kit_usb4 = 0 END
+		ACTION_IF (min_con = ~-1~) THEN BEGIN OUTER_SET min_con = 0 END
+		ACTION_IF (proficency = ~-1~) THEN BEGIN OUTER_SET proficency = 0 END
+		ACTION_IF (min_cha = ~-1~) THEN BEGIN OUTER_SET min_cha = 0 END
+		ACTION_IF (price = ~-1~) THEN BEGIN OUTER_SET price = 0 END
+		ACTION_IF (stack = ~-1~) THEN BEGIN OUTER_SET stack = 1 END
+		ACTION_IF (~%icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN OUTER_TEXT_SPRINT icon ~~ END
+		ACTION_IF (lore = ~-1~) THEN BEGIN OUTER_SET lore = 0 END
+		ACTION_IF (~%ground_icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN OUTER_TEXT_SPRINT ground_icon ~~ END
+		ACTION_IF (weight = ~-1~) THEN BEGIN OUTER_SET weight = 0 END
+		ACTION_IF (~%description_icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN OUTER_TEXT_SPRINT description_icon ~~ END
+		ACTION_IF (enchantment = ~-1~) THEN BEGIN OUTER_SET enchantment = 0 END
+	END
+	COPY ~...inlined/W7/lib/DUMMY_ITEM.ITM~ ~override/%item%.ITM~
+		INSERT_BYTES 0 0x72
+		WRITE_ASCII 0 ~ITM V1  ~ (8)
+		WRITE_LONG NAME1 name
+		WRITE_LONG NAME2 name_i
+		WRITE_ASCIIE 0x10 ~%used%~ (8)
+		WRITE_LONG 0x18 flags
+		WRITE_SHORT 0x1c type
+		WRITE_LONG 0x1e unusable_by
+		WRITE_SHORT 0x22 animation
+		WRITE_SHORT 0x24 min_lvl
+		WRITE_SHORT 0x26 min_str
+		WRITE_BYTE 0x28 min_bstr
+		WRITE_BYTE 0x29 kit_usb1
+		WRITE_BYTE 0x2a min_int
+		WRITE_BYTE 0x2b kit_usb2
+		WRITE_BYTE 0x2c min_dex
+		WRITE_BYTE 0x2d kit_usb3
+		WRITE_BYTE 0x2e min_wis
+		WRITE_BYTE 0x2f kit_usb4
+		WRITE_BYTE 0x30 min_con
+		WRITE_BYTE 0x31 proficency
+		WRITE_SHORT 0x32 min_cha
+		WRITE_LONG 0x34 price
+		WRITE_SHORT 0x38 stack
+		WRITE_ASCIIE 0x3a ~%icon%~ (8)
+		WRITE_SHORT 0x42 lore
+		WRITE_ASCIIE 0x44 ~%ground_icon%~ (8)
+		WRITE_LONG 0x4c weight
+		WRITE_LONG UNIDENTIFIED_DESC description
+		WRITE_LONG IDENTIFIED_DESC description_i
+		WRITE_ASCIIE 0x58 ~%description_icon%~ (8)
+		WRITE_LONG 0x60 enchantment
+		WRITE_LONG 0x64 0x72
+		WRITE_LONG 0x6a 0x72
+END
+
+//////////////////////
+// COPY_ITEM_HEADER //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																	//
+//	Copies the ability header numbered as header_index parameter from the current item and stores it in a header string variable.	//
+//	If keep_effect parameter is greater than 0, all the ability effects are also copied and stored in the header variable.			//
+//	The returned header variable can be given to the ADD_ITEM_HEADER function to paste the copied ability.							//
+//																																	//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~COPY_ITEM_HEADER~
+	INT_VAR
+		header_index = 0
+		keep_effects = 0
+	RET
+		header
+BEGIN
+	LPF ~FJ_SPL_ITM_REINDEX~ END
+	READ_SHORT 0x68 hc
+	header_index = (header_index < 0) ? 0 : header_index
+	header_index = (header_index > hc - 1) ? (hc - 1) : header_index
+	PATCH_IF (header_index < 0) THEN BEGIN
+		PATCH_WARN ~%SOURCE_FILE% contains no abilities! Skipping COPY_ITEM_HEADER.~
+	END ELSE BEGIN
+		hs=0x38
+		READ_LONG 0x64 ho
+		READ_ASCII (ho + header_index * hs) header (hs)
+		PATCH_IF keep_effects THEN BEGIN
+			READ_SHORT (ho + header_index * hs + 0x1e) ec
+			PATCH_IF ec THEN BEGIN
+				READ_LONG 0x6a eo
+				READ_SHORT (ho + header_index * hs + 0x20) ei
+				READ_ASCII (eo + ei * 0x30) effects (ec * 0x30)
+				TEXT_SPRINT header ~%header%%effects%~
+			END
+		END ELSE BEGIN
+			INNER_PATCH_SAVE header ~%header%~ BEGIN
+				WRITE_SHORT 0x1e 0
+				WRITE_SHORT 0x20 0
+			END
+		END
+	END
+END
+
+/////////////////////
+// ADD_ITEM_HEADER //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																																//
+//	Adds a new ability header to the current item. If a header parameter is provided, the header referenced in that parameter	//
+//	is taken as a starting point (if the header contains any effect, those effects are also added to the current item),			//
+//	but every other provided parameter will replace the corrispondig value in the source header.								//
+//	I found a basic version of this function in a library created by Ardanis, but since I wrote a cloning feature for the		//
+//	ADD_SPELL_HEADER function, I decided to write this one in the same style.													//
+//																																//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_PATCH_FUNCTION ~ADD_ITEM_HEADER~
+	INT_VAR
+		type = ~-1~
+		required_id = ~-1~
+		location = ~-1~
+		alt_dicesize = ~-1~
+		target = ~-1~
+		target_count = ~-1~
+		range = ~-1~
+		projectile_type = ~-1~
+		alt_dicenumber = ~-1~
+		speed = ~-1~
+		alt_damage = ~-1~
+		thaco = ~-11~
+		dicesize = ~-1~
+		school = ~-1~
+		dicenumber = ~-1~
+		sectype = ~-1~
+		damage = ~-11~
+		damage_type = ~-1~
+		charges = ~-1~
+		depletion = ~-1~
+		flags = ~-1~
+		projectile = ~-1~
+		overhand = ~-1~
+		backhand = ~-1~
+		thrust = ~-1~
+		is_bow = ~-1~
+		is_xbow = ~-1~
+		is_sling = ~-1~
+		insert_point = ~-1~
+	STR_VAR
+		header = ~~
+		icon = ~*~
+	RET
+		insert_point
+BEGIN
+	LPF ~FJ_SPL_ITM_REINDEX~ END
+	hs = 0x38
+	READ_LONG 0x64 ho
+	READ_SHORT 0x68 hc
+	READ_LONG 0x6a eo
+	insert_point = (insert_point > hc || insert_point < 0) ? hc : insert_point
+	INSERT_BYTES ho + insert_point * hs hs
+	eo += hs
+	PATCH_IF STRING_LENGTH ~%header%~ >= hs THEN BEGIN
+		PATCH_IF STRING_LENGTH ~%header%~ > hs THEN BEGIN
+			SNPRINT (0 - STRING_LENGTH ~%header%~ + hs) effects ~%header%~
+			SNPRINT hs header ~%header%~
+			PATCH_IF (insert_point = 0) THEN BEGIN
+				ei = 0
+				INNER_PATCH_SAVE header ~%header%~ BEGIN
+					READ_SHORT 0x1e ec
+					WRITE_SHORT 0x20 ei
+				END
+			END ELSE BEGIN
+				READ_SHORT ho + (insert_point - 1) * hs + 0x1e pec
+				READ_SHORT ho + (insert_point - 1) * hs + 0x20 pei
+				ei = pei + pec
+				INNER_PATCH_SAVE header ~%header%~ BEGIN
+					READ_SHORT 0x1e ec
+					WRITE_SHORT 0x20 ei
+				END
+			END
+			INSERT_BYTES (eo + ei * 0x30) STRING_LENGTH ~%effects%~
+			WRITE_ASCIIE (eo + ei * 0x30) ~%effects%~ (STRING_LENGTH ~%effects%~)
+			PATCH_IF (insert_point < hc) THEN BEGIN
+				FOR (i = (ho + (insert_point + 1) * hs + 0x20); i <= (ho + hc * hs + 0x20); i += hs) BEGIN
+					READ_SHORT i cei
+					cei += ec
+					WRITE_SHORT i cei
+				END
+			END
+		END
+	END ELSE BEGIN
+		INNER_PATCH_SAVE header ~%header%~ BEGIN
+			INSERT_BYTES 0 hs
+			WRITE_BYTE 0x00 3
+			WRITE_BYTE 0x02 3
+			WRITE_BYTE 0x0c 1
+			WRITE_BYTE 0x16 6
+			WRITE_SHORT 0x2a 1
+			WRITE_SHORT 0x2c 100
+		END
+	END
+	INNER_PATCH_SAVE header ~%header%~ BEGIN
+		PATCH_IF !(type = ~-1~) THEN BEGIN WRITE_BYTE 0x00 type END
+		PATCH_IF !(required_id = ~-1~) THEN BEGIN WRITE_BYTE 0x01 required_id END
+		PATCH_IF !(location = ~-1~) THEN BEGIN WRITE_BYTE 0x02 location END
+		PATCH_IF !(alt_dicesize = ~-1~) THEN BEGIN WRITE_BYTE 0x03 alt_dicesize END
+		PATCH_IF !(~%icon%~ STRING_EQUAL_CASE ~*~) THEN BEGIN WRITE_ASCIIE 0x04 ~%icon%~ (8) END
+		PATCH_IF !(target = ~-1~) THEN BEGIN WRITE_BYTE 0x0c target END
+		PATCH_IF !(target_count = ~-1~) THEN BEGIN WRITE_BYTE 0x0d target_count END
+		PATCH_IF !(range = ~-1~) THEN BEGIN WRITE_SHORT 0x0e range END
+		PATCH_IF !(projectile_type = ~-1~) THEN BEGIN WRITE_BYTE 0x10 projectile_type END
+		PATCH_IF !(alt_dicenumber = ~-1~) THEN BEGIN WRITE_BYTE 0x11 alt_dicenumber END
+		PATCH_IF !(speed = ~-1~) THEN BEGIN WRITE_BYTE 0x12 speed END
+		PATCH_IF !(alt_damage = ~-1~) THEN BEGIN WRITE_BYTE 0x13 alt_damage END
+		PATCH_IF !(thaco = ~-11~) THEN BEGIN WRITE_SHORT 0x14 thaco END
+		PATCH_IF !(dicesize = ~-1~) THEN BEGIN WRITE_BYTE 0x16 dicesize END
+		PATCH_IF !(school = ~-1~) THEN BEGIN WRITE_BYTE 0x17 school END
+		PATCH_IF !(dicenumber = ~-1~) THEN BEGIN WRITE_BYTE 0x18 dicenumber END
+		PATCH_IF !(sectype = ~-1~) THEN BEGIN WRITE_BYTE 0x19 sectype END
+		PATCH_IF !(damage = ~-11~) THEN BEGIN WRITE_SHORT 0x1a damage END
+		PATCH_IF !(damage_type = ~-1~) THEN BEGIN WRITE_SHORT 0x1c damage_type END
+		PATCH_IF !(charges = ~-1~) THEN BEGIN WRITE_SHORT 0x22 charges END
+		PATCH_IF !(depletion = ~-1~) THEN BEGIN WRITE_SHORT 0x24 depletion END
+		PATCH_IF !(flags = ~-1~) THEN BEGIN WRITE_LONG 0x26 flags END
+		PATCH_IF !(projectile = ~-1~) THEN BEGIN WRITE_SHORT 0x2a projectile END
+		PATCH_IF !(overhand = ~-1~) THEN BEGIN WRITE_SHORT 0x2c overhand END
+		PATCH_IF !(backhand = ~-1~) THEN BEGIN WRITE_SHORT 0x2e backhand END
+		PATCH_IF !(thrust = ~-1~) THEN BEGIN WRITE_SHORT 0x30 thrust END
+		PATCH_IF !(is_bow = ~-1~) THEN BEGIN WRITE_SHORT 0x32 is_bow END
+		PATCH_IF !(is_xbow = ~-1~) THEN BEGIN WRITE_SHORT 0x34 is_xbow END
+		PATCH_IF !(is_sling = ~-1~) THEN BEGIN WRITE_SHORT 0x36 is_sling END
+	END
+	WRITE_ASCIIE (ho + insert_point * hs) ~%header%~ (hs)
+	hc += 1
+	WRITE_SHORT 0x68 hc
+	WRITE_LONG 0x6a eo
+	READ_SHORT 0x70 ei
+    FOR (i = ho; i < (ho + hc * hs); i += hs) BEGIN
+      READ_SHORT (i + 0x1e) ec
+      WRITE_SHORT (i + 0x20) ei
+      ei += ec
+    END
+END
+
+////////////////////////////
+// SELECT_ITEMS_BY_EFFECT //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																														//
+//	Returns an array containing every item having at least one effect matching the given parameters. All the provided	//
+//	parameters must match, while not provided parameters are ignored. Both ability effects and equipping features are	//
+//	taken into consideration.																							//
+//																														//
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DEFINE_ACTION_FUNCTION ~SELECT_ITEMS_BY_EFFECT~
+	INT_VAR
+		opcode = (0 - 1)
+		target = (0 - 1)
+		power = (0 - 1)
+		parameter1 = (0 - 1)
+		parameter2 = (0 - 1)
+		parameter2_0 = (0 - 1)
+		parameter2_1 = (0 - 1)
+		timing = (0 - 1)
+		resist_dispel = (0 - 1)
+		duration = (0 - 1)
+		probability1 = (0 - 1)
+		probability2 = (0 - 1)
+		dicenumber = (0 - 1)
+		dicesize = (0 - 1)
+		savingthrow = (0 - 1)
+		savebounus = (0 - 11)
+		special = (0 - 1)
+	STR_VAR
+		resource = ~*~
+	RET
+		match_count
+	RET_ARRAY
+		match_items
+BEGIN
+	OUTER_SET match_count = 0
+	COPY_EXISTING_REGEXP GLOB ~.*\.itm~ ~override~
+		READ_LONG 0x6a eo
+		FOR (i = eo; i < SOURCE_SIZE; i += 0x30) BEGIN
+			add = 1
+			PATCH_IF (opcode != (0 - 1)) THEN BEGIN
+				READ_SHORT i par
+				PATCH_IF (opcode != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (target != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x02 par
+				PATCH_IF (target != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (power != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x03 par
+				PATCH_IF (power != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter1 != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x04 par
+				PATCH_IF (parameter1 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter2 != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x08 par
+				PATCH_IF (parameter2 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter2_0 != (0 - 1)) THEN BEGIN
+				READ_SHORT i + 0x08 par
+				PATCH_IF (parameter2_0 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (parameter2_1 != (0 - 1)) THEN BEGIN
+				READ_SHORT i + 0x0a par
+				PATCH_IF (parameter2_1 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (timing != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x0c par
+				PATCH_IF (timing != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (resist_dispel != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x0d par
+				PATCH_IF (resist_dispel != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (duration != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x0e par
+				PATCH_IF (duration != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (probability1 != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x12 par
+				PATCH_IF (probability1 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (probability2 != (0 - 1)) THEN BEGIN
+				READ_BYTE i + 0x13 par
+				PATCH_IF (probability2 != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF !(~%resource%~ STRING_EQUAL_CASE ~*~) THEN BEGIN
+				READ_ASCII i + 0x14 par (8)
+				PATCH_IF !(~%resource%~ STRING_EQUAL_CASE ~%par%~) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (dicenumber != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x1c par
+				PATCH_IF (dicenumber != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (dicesize != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x20 par
+				PATCH_IF (dicesize != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (savingthrow != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x24 par
+				PATCH_IF (savingthrow != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (savebounus != (0 - 11)) THEN BEGIN
+				READ_LONG i + 0x28 par
+				PATCH_IF (savebounus != par) THEN BEGIN
+					add = 0
+				END
+			END
+			PATCH_IF (special != (0 - 1)) THEN BEGIN
+				READ_LONG i + 0x2c par
+				PATCH_IF (special != par) THEN BEGIN
+					add = 0
+				END
+			END			
+			PATCH_IF (add = 1) THEN BEGIN
+				TEXT_SPRINT $match_items(~%SOURCE_FILE%~) ~~
+				match_count += 1
+				i = SOURCE_SIZE
+			END
+		END
+	BUT_ONLY
+	ACTION_IF (match_count = 0) THEN BEGIN
+		OUTER_TEXT_SPRINT $match_items(~*~) ~*~
+	END
+END
